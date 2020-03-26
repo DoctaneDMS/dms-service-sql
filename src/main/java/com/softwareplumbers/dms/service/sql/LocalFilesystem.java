@@ -37,6 +37,10 @@ public class LocalFilesystem implements Filestore<Id> {
     public LocalFilesystem() {
         this(Paths.get("/var/tmp/doctane/filestore"));
     }
+    
+    public void setPath(String basePath) {
+        this.basePath = Paths.get(basePath);
+    }
 
     @Override
     public Id parseKey(String key) {
