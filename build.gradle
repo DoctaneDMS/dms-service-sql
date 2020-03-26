@@ -14,7 +14,7 @@ String propValue(String propName, String defValue) {
 }
 
 version = propValue("ci_version","master");
-group = "com.softwareplumbers.dms"
+group = "com.softwareplumbers.oss"
 
 def SNAPSHOT_BUILDS = ["master"];
 
