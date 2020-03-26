@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor entityID="https://auth.softwareplumbers.com/auth/realms/doctane-test"
+                   xmlns="urn:oasis:names:tc:SAML:2.0:metadata"
+                   xmlns:dsig="http://www.w3.org/2000/09/xmldsig#"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+   <IDPSSODescriptor WantAuthnRequestsSigned="true"
+      protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+      <SingleLogoutService
+         Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+         Location="https://auth.softwareplumbers.com/auth/realms/doctane-test/protocol/saml" />
+   <NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:persistent</NameIDFormat>
+   <NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:transient</NameIDFormat>
+   <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified</NameIDFormat>
+   <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
+
+      <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+         Location="https://auth.softwareplumbers.com/auth/realms/doctane-test/protocol/saml" />
+      <KeyDescriptor use="signing">
+        <dsig:KeyInfo>
+          <dsig:KeyName>-DPsghzOJEw81Q0scYeZVvZ93BP6md8wFMjMWLMCTww</dsig:KeyName>
+          <dsig:X509Data>
+            <dsig:X509Certificate>MIICpzCCAY8CBgFkYuHNjjANBgkqhkiG9w0BAQsFADAXMRUwEwYDVQQDDAxkb2N0YW5lLXRlc3QwHhcNMTgwNzA0MDEyMDIyWhcNMjgwNzA0MDEyMjAyWjAXMRUwEwYDVQQDDAxkb2N0YW5lLXRlc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDKpBlxIKsxoq/aBvJQGLFttS/fEB0m0Tz7/Syp9Hr90HYYzQYr1K7zWzXE5p9+ZHS1a3C3uk6V5v1CERv6tbL40E4muMHvBQh1k0ZuYBzr+DnP6t//qSpk+wkL2XqNme/UUwx3tJJUKSrPFaTClMvFyiMx4UhJ6lK7cDPNo+NiuVrelhEOlZriT7+yw0zMn8K0QkIflZUeRk1Ojixj3GCc0uLQui63ThyFSg53Lhrnenb7p0aj6s0rkqo9ncd7VP2T63KRCT4uI6gbyIJzIZ+rWS9zlQuugI64acDeXyg2nqSGhYjOwtdiGfxwnT5E7AO6/ZWVFrDC1VWRS2Jo6ZXtAgMBAAEwDQYJKoZIhvcNAQELBQADggEBAIjK/hf+jYi2DE04rrQjxsuUtzLdJxQ2Hx5DNZFSlnXXLod1nFewFdxFUOCrUQOWzOYezmRJcC8w+7a0f8TQ7Vh99CKPQixMylQheBwjOV+HvXVejf3CIQJpSjtVgxsHSFs2t7Kn2F4E6H2QvDlxMArD6GidlNPfWBOlG8MCKlIVSs/j5pRWo43eHnAQePDt+vv6ltF3LHhz4OCtTH9gEZt60nKOd4vzGT0jWWtmPUDfD62Kn6FG0YGPp4g8SBkXhqhIvYQdWYLctlGujAuqCTdqmfqDbg6XzeI3wh2+L3Jmrq5KV9CTVo4jieUqsjzBtqyaLNMTwc7OtwjPRHiHPbc=</dsig:X509Certificate>
+          </dsig:X509Data>
+        </dsig:KeyInfo>
+      </KeyDescriptor>
+   </IDPSSODescriptor>
+</EntityDescriptor>

@@ -1,0 +1,1352 @@
+Received: from ms11p00im-qufv17080901.me.com ([17.58.36.77])
+ by ms66022.mac.com (Oracle Communications Messaging Server 8.0.2.3.20180628
+ 64bit (built Jun 28 2018)) with ESMTP id <0Q0N003GZZOXTI10@ms66022.mac.com>
+ for jonathanessex@me.com; Fri, 08 Nov 2019 19:05:21 +0000 (GMT)
+Original-recipient: rfc822;jonathanessex@me.com
+Return-path:
+ <20191108190511b994acc5ea704a8cadac587c4720p0na-C2XOTA3S70OAJV@bounces.amazon.com>
+Received: from a15-55.smtp-out.amazonses.com
+ (a15-55.smtp-out.amazonses.com [54.240.15.55])
+	by ms11p00im-qufv17080901.me.com (Postfix) with ESMTPS id 9A8902190E88	for
+ <jonathanessex@me.com>; Fri,  8 Nov 2019 19:05:11 +0000 (UTC)
+Authentication-results: magent0175.usmsc04.pie.apple.com; dmarc=pass
+ header.from=amazon.com
+x-dmarc-info: pass=pass; dmarc-policy=quarantine; s=r1; d=r1
+x-dmarc-policy: v=DMARC1; p=quarantine; pct=100;
+ rua=mailto:dmarc-reports@bounces.amazon.com;
+ ruf=mailto:dmarc-reports@bounces.amazon.com
+Authentication-results: magent0655.usmsc04.pie.apple.com;	dkim=pass (1024-bit
+ key) header.d=amazon.com header.i=@amazon.com header.b=LNj2rb6d
+Authentication-results: magent0655.usmsc04.pie.apple.com;	dkim=pass (1024-bit
+ key) header.d=amazonses.com header.i=@amazonses.com header.b=KENdy5k3
+Authentication-results: magent1147.usmsc04.pie.apple.com; spf=pass
+ (magent1147.usmsc04.pie.apple.com: domain of
+ 20191108190511b994acc5ea704a8cadac587c4720p0na-C2XOTA3S70OAJV@bounces.amazon.com designates
+ 54.240.15.55 as permitted sender)
+ smtp.mailfrom=20191108190511b994acc5ea704a8cadac587c4720p0na-C2XOTA3S70OAJV@bounces.amazon.com
+Received-SPF: pass (magent1147.usmsc04.pie.apple.com: domain of
+ 20191108190511b994acc5ea704a8cadac587c4720p0na-C2XOTA3S70OAJV@bounces.amazon.com designates
+ 54.240.15.55 as permitted sender) receiver=magent1147.usmsc04.pie.apple.com;
+ client-ip=54.240.15.55; helo=a15-55.smtp-out.amazonses.com;
+ envelope-from=20191108190511b994acc5ea704a8cadac587c4720p0na-C2XOTA3S70OAJV@bounces.amazon.com
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+	s=taugkdi5ljtmsua4uibbmo5mda3r2q3v; d=amazon.com; t=1573239911;
+	h=From:To:Message-ID:Subject:MIME-Version:Content-Type:Date;
+	bh=iCC5nBxoxstefzV9QVmQ/q6uaQ7LUVzuFF/jkzIlvpQ=;
+	b=LNj2rb6dZSuC0t96dDjwhZOUM7NVB0NesV1H1g1SKUASGY52orWtL92PNzlp4KMc
+	52m/oeHwZvNJYoN5s8RR/H1ljP7KjbCFT/Wf0gPUWFVXkAo5+CmkDpsS5hKQYKEqAS0
+	QUHUP+IGTki/u4MAO+GNhrUL9TgYmUfM61rbjgZU=
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+	s=6gbrjpgwjskckoa6a5zn6fwqkn67xbtw; d=amazonses.com; t=1573239911;
+	h=From:To:Message-ID:Subject:MIME-Version:Content-Type:Date:Feedback-ID;
+	bh=iCC5nBxoxstefzV9QVmQ/q6uaQ7LUVzuFF/jkzIlvpQ=;
+	b=KENdy5k3ScD/ZvKyWePUAKUjia2B3vX3ZnwtPY/LDc+jS6w/sffolgRGo/a04ALN
+	Lid47mudg+fsOEsUtzE02fZbAKuzMCy+mS/Pms01CbRMGRFaxU9kqtSJoOtsnDtn6ET
+	ODYcsfRlza0Xg/nG4BQUuwnD1HhqVFPSXqZfkNOM=
+From: Amazon Echo <store-news@amazon.com>
+To: jonathanessex@me.com
+Message-id:
+ <0100016e4c67f291-54dcfb38-8f31-4c6c-ab68-cc0f37d452a0-000000@email.amazonses.com>
+Subject: What's new with Alexa?
+MIME-version: 1.0
+Content-type: multipart/alternative;
+ boundary="----=_Part_1415188_2055156421.1573239911046"
+X-AMAZON-MAIL-RELAY-TYPE: notification
+Bounces-to:
+ 20191108190511b994acc5ea704a8cadac587c4720p0na-C2XOTA3S70OAJV@bounces.amazon.com
+X-AMAZON-METADATA: CA=C2XOTA3S70OAJV-CU=A186YUQUEPW9RM
+X-Original-MessageID:
+ <urn.rtn.msg.20191108190511b994acc5ea704a8cadac587c4720p0na@1573239911048.rtn-na-mktng-c42xl1b-4f37cbcb.us-east-1.amazon.com>
+Date: Fri, 08 Nov 2019 19:05:11 +0000
+X-SES-Outgoing: 2019.11.08-54.240.15.55
+Feedback-ID: 1.us-east-1.+gzE1S+MWTFXXYmwxo7wkk651GMxMPAUFYiyN/09X40=:AmazonSES
+X-MANTSH: 1TEIXR1kbG1oaGkNHB1tfTFwbGhsbGxMaGxEKTEMXGxoEGxsYBBsbGgQeGRAbHho
+ fGhEKTFkXExIRCllEF2t6cl9LQ0hbHHl+EQpZTRdkRURPEQpZSRcacRoQGncGBxgYcRkdHRkZE
+ BwYGB0ZdwYYGgYbGhoRClleF2xseREKQ04XS1hFTmJtBRoaAXseGRlncmFfYmwcG39MEn9iGGE
+ ZfWwRClhcFxkEGgQeGQcdHBJLHR8fSQUbGgQTBBsEHR8QGx4aHxoRCl5ZF38BGG9uEQpNXBcZH
+ xsRCkxaF2B6WUdNEQpMRhdNaxEKQ1oXHx4EGB4aBBsfBB8fEQpCXhcbEQpZRRcZEQpFSRcbEQp
+ FZhceEQpCXBcbEQpeThcbEQpCSxdmU2FcSWNwa38bZxEKQkkXZlNhXEljcGt/G2cRCkJFF2BTY
+ lBCc1hybV1cEQpCThdmU2FcSWNwa38bZxEKQkwXYR1gSRx+ZkZzb0sRCkJsF2BGfhkfZn1se2k
+ cEQpCQBdpUxofX30TG2t6XBEKQlgXYUBmRmcBbmlza3MRCkJ4F2hhclxZXmcdXWl+EQpaWBcSE
+ QpwaBdgc11Bbl4FX3pkeBAHGxIcEQpwaBdgbB4YHmFLTUtEeRAHHRIRCnBoF2F9bHoTSH4ZRn9
+ pEAcbHBwRCnBoF3pvcmRjeXp/eQFnEAcbGhoRCnBoF2hyG0kZS0t6eUF5EBoRCnB9F21IR0Raa
+ GBEaRkSEBoRCnB9F2lAYhN7S2dnE05BEBoRCnB9F2NBfWZOT3pdeltuEBoRCnB9F2F5E2J7S3N
+ rRUBvEBoRCnB9F2hBH3BATU5jW2cdEBoRCnB9F2ZrXFJGYn5EWHhGEBoRCnB9F2hgeUJ8eXB6T
+ FttEBoRCnB9F2xYaAF7X2lEbnBsEBoRCnB9F25CHX5/XF1QY3N/EBoRCnB9F2JpBRMZQkYBG1J
+ lEAcbGBoRCnB9F2QYEkBsfhNyfExeEBoRCnB/F2llSXJZGHpHH19QEAcbHhwRCnBfF25yS1Jpa
+ 3xSekVEEBoRCnBfF2NzGFpuX2RTE398EAccGhEKcF8XY0xtaUVYXFtNWnsQBxwaEQpwfxdvG0F
+ oemNmHkhmExAHGx8YEQpwXxd6YWVzWBpGRkxoQxAHHhIRCnB/F2FPHxl5SWlceRpmEAcbEh0RC
+ nBfF2taZ24bGnJ/cE1rEAcZGhEKcH8XbWRpTm0BTUV7TEAQBxsZHREKcF8Xb09BTBlaHh5LHAU
+ QBx0aEQpwXxdoc0ZcbAVjRBJ+fhAHHhIRCnBfF2lZH2lNY1NMT2xZEAcTHxEKcH8XbUNlZBhmS
+ E1hfxoQBxsSGxEKcF8XZWRgaGVJTVtaAW8QBxsdGhEKcF8Xbx1HAWFnW0BNXH0QBxsYExEKcGw
+ XZRJkZRlvH1JkfmEQBx0aEQptfhcaEQpYTRdLEQ==
+X-CLX-Shades: None
+X-CLX-UShades: None
+X-CLX-Score: 98
+X-CLX-UnSpecialScore: None
+X-CLX-Spam: false
+X-Proofpoint-Virus-Version: vendor=fsecure engine=2.50.10434:,,
+ definitions=2019-11-08_07:,, signatures=0
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=28
+ malwarescore=0 phishscore=0 bulkscore=100 spamscore=0 clxscore=98 mlxscore=0
+ mlxlogscore=999 adultscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.0.1-1908290000 definitions=main-1911080187
+x-icloud-message-id:
+ 51a0f244b95871bb960f52faf542bc554e71628e2684ee0cce2f9a0216b42788
+
+------=_Part_1415188_2055156421.1573239911046
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=20
+AMAZON ECHO
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=20
+
+Turning over a new leaf.
+Just say, =E2=80=9CAlexa, tell me a joke about fall=E2=80=9D
+
+WEEKLY SPOTLIGHT
+
+ - =E2=80=9CAlexa, make a note"
+Now you can take notes with Alexa and retrieve them later by asking, "Alexa=
+, what are my notes?"
+
+
+ - =E2=80=9CAlexa, add slippers to my Wish List"
+Let people know what you want for your birthday, the holidays, or any occas=
+ion. &lt;a href=3D&quot;https://www.amazon.com/alexa-voice-shopping/b?ie=3D=
+UTF8&amp;node=3D14552177011&amp;ref_=3Dsub_aucc_pace_en_us_wishList&quot;&g=
+t;Learn more&lt;/a&gt;.
+
+
+ - =E2=80=9CAlexa, play the Best of 3D Music"
+Echo Studio is our new, high-fidelity smart speaker. With an Amazon Music H=
+D trial or subscription you can play 50 million songs in high-def plus a gr=
+owing library of music mastered in 3D.
+
+
+
+
+
+THINGS TO TRY
+ - =E2=80=9CAlexa, play something chill=E2=80=9D
+ - =E2=80=9CAlexa, what is FreeTime Unlimited?=E2=80=9D
+ - =E2=80=9CAlexa, pair my phone=E2=80=9D
+ - =E2=80=9CAlexa, play popular rock songs=E2=80=9D
+ - =E2=80=9CAlexa, play news from ESPN Flash Briefing=E2=80=9D
+ - =E2=80=9CAlexa, play the Sims=E2=80=9D
+ - =E2=80=9CAlexa, create a vacation list=E2=80=9D
+ - =E2=80=9CAlexa, what=E2=80=99s the best coffee maker?=E2=80=9D
+    When you need a recommendation, just ask Alexa. Alexa will suggest item=
+s based on real Amazon customer reviews and ratings. "https://www.amazon.co=
+m/alexa-voice-shopping/b?ie=3DUTF8&node=3D14552177011&ref_=3Dpe_txt_sub_auc=
+c_pace_en_us_Shopping"
+ - =E2=80=9CAlexa, help me listen to live sports=E2=80=9D
+ - =E2=80=9CAlexa, how long will it take to get to San Francisco from Los A=
+ngeles?=E2=80=9D
+ - =E2=80=9CAlexa, what=E2=80=99s free from Audible?=E2=80=9D
+ - =E2=80=9CAlexa, how did you get your name?=E2=80=9D
+ - =E2=80=9CAlexa, when I say =E2=80=99it=E2=80=99s party time=E2=80=99, pl=
+ay disco music=E2=80=9D
+    Now you can create Routines by voice. Just tell Alexa the phrase you wa=
+nt to say and the action she should play.
+ - =E2=80=9CAlexa, what=E2=80=99s on my calendar?=E2=80=9D
+ - =E2=80=9CAlexa, set the background to my photos=E2=80=9D
+ - =E2=80=9CAlexa, what are my notifications?=E2=80=9D
+    Alexa can notify you on the status of your Amazon delivery. When the ye=
+llow light is pulsing on your Echo device, just ask Alexa. "https://www.ama=
+zon.com/b?ie=3DUTF8&node=3D17892257011&ref_=3Dpe_txt_sub_aucc_pace_en_us_su=
+b_aucc_us_crm"
+   =20
+For more things to try, visit our Alexa guide or ask "Alexa, what can you d=
+o?"
+https://www.amazon.com/b/?node=3D16067214011&ref_=3Dpe_txt_AuCC_CRM_aeg
+
+Follow us on social media:=20
+https://twitter.com/alexa99?ref_=3Dpe_txt_AuCC_CRM_twtr
+https://www.facebook.com/AmazonAlexa/?ref_=3Dpe_txt_AuCC_CRM_fbook
+https://www.youtube.com/channel/UCz2-0uvBJt-AwoiFSyMb_yQ?ref_=3Dpe_txt_AuCC=
+_CRM_yutb
+
+Your pals can get this email every week, too=E2=80=94just ask them to subsc=
+ribe.
+https://www.amazon.com/gp/gss/detail/42015080?ref_=3Dpe_txt_AuCC_CRM_sbscrb
+
+(c) 2019 Amazon.com, Inc. or its affiliates. All rights reserved. Amazon, E=
+cho, Alexa and all related logos are trademarks of Amazon.com, Inc. or its =
+affiliates.=20
+
+Amazon.com, 410 Terry Avenue N., Seattle, WA 98109-5210. Reference: 4503819=
+80
+
+Please note that this message was sent to the following email address: jona=
+thanessex@me.com.  We hope you found this message to be useful. However, if=
+ you'd rather not receive future emails of this sort from Amazon.com, pleas=
+e unsubscribe here: https://www.amazon.com//gp/gss/u/1JaRKA1-DxMVdbDrDJkSg8=
+0bN6vJbyG1Ielr9xPAVQlWkNadjJMQn4SC3gi8fI-Zb=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=20
+AMAZON ECHO
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=20
+
+
+------=_Part_1415188_2055156421.1573239911046
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<!doctype html><html xmlns=3D"http://www.w3.org/1999/xhtml" xmlns:v=3D"urn:=
+schemas-microsoft-com:vml" xmlns:o=3D"urn:schemas-microsoft-com:office:offi=
+ce">
+<head>
+  <!--[if gte mso 15]> =20
+    <xml>
+      <o:OfficeDocumentSettings>
+      <o:AllowPNG/>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+    <![endif]-->
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8">
+        <meta http-equiv=3D"X-UA-Compatible" content=3D"IE=3Dedge">
+        <meta name=3D"viewport" content=3D"width=3Ddevice-width, initial-sc=
+ale=3D1">
+        <meta name=3D"x-apple-disable-message-reformatting">
+    <title></title>
+
+    <link href=3D'https://fonts.googleapis.com/css?family=3DRoboto:300,100'=
+ rel=3D'stylesheet' type=3D'text/css'>
+    <style type=3D"text/css">
+  @import url(https://fonts.googleapis.com/css?family=3DRoboto:300,100);
+  @font-face {
+      font-family: 'EmberHE';
+      font-style: normal;
+      font-weight: 100;
+      src: local('EmberHE'), url(https://m.media-amazon.com/images/G/01/nav=
+2/images/airstream/AmazonEmber_He.woff2) format('woff');
+        }
+    @font-face {
+      font-family: 'EmberLT';
+      font-style: normal;
+      font-weight: 100;
+      src: local('EmberLT'), url(https://m.media-amazon.com/images/G/01/nav=
+2/images/airstream/amazon_ember_lt-webfont.woff2) format('woff');
+        }   =20
+       =20
+ =09body,#bodyTable,#bodyCell{
+      height:100%;
+      margin:0 auto!important;
+      padding:0;
+      width:100%;
+    }
+ div[style*=3D"margin: 16px 0"] { margin:0 !important; }=09
+     p{
+      margin:10px 0;
+      padding:0;
+            line-height:110%;
+    }
+    table{
+      border-collapse:collapse;
+    }
+    h1,h2,h3,h4,h5,h6{
+      display:block;
+      margin:0;
+      padding:0;
+    }
+    img,a img{
+      border:0;
+      height:auto;
+      outline:none;
+      text-decoration:none;
+    }
+  =20
+    #outlook a{
+      padding:0;
+    }
+    img{
+      -ms-interpolation-mode:bicubic;
+    }
+    table{
+      mso-table-lspace:0pt;
+      mso-table-rspace:0pt;
+    }
+    .ReadMsgBody{
+      width:100%;
+    }
+    .ExternalClass{
+      width:100%;
+    }
+    p,a,li,td,blockquote{
+      mso-line-height-rule:exactly;
+    }
+    a[href^=3Dtel],a[href^=3Dsms]{
+      color:inherit;
+      cursor:default;
+      text-decoration:none;
+    }
+    p,a,li,td,body,table,blockquote{
+      -ms-text-size-adjust:100%;
+      -webkit-text-size-adjust:100%;
+    }
+    .ExternalClass,.ExternalClass p,.ExternalClass td,.ExternalClass div,.E=
+xternalClass span,.ExternalClass font{
+      line-height:100%;
+    }
+    a[x-apple-data-detectors]{
+      color:inherit !important;
+      text-decoration:none !important;
+      font-size:inherit !important;
+      font-family:inherit !important;
+      font-weight:inherit !important;
+      line-height:inherit !important;
+    }
+    .templateContainer{
+      max-width:600px !important;
+    }
+    a.mcnButton{
+      display:block;
+    }
+    .mcnImage{
+      vertical-align:bottom;
+    }
+    .mcnTextContent{
+      word-break:break-word;
+    }
+    .mcnTextContent img{
+      height:auto !important;
+    }
+    .mcnDividerBlock{
+      table-layout:fixed !important;
+    }
+  =20
+    #bodyCell{
+      border-top:0;
+    }
+    h1{
+      color:#262626;
+      font-family:'EmberHE', Helvetica, Arial, sans-serif;
+      font-size:16px;
+      font-style:normal;
+      font-weight:bold important;
+      line-height:100%;
+      letter-spacing:normal;
+      text-align:left;
+    }
+    h2{
+      color:#262626;
+      font-family:'EmberHE', Helvetica, Arial, sans-serif;
+      font-size:16px;
+      font-style:normal;
+      font-weight:bold important;
+      line-height:100%;
+      letter-spacing:normal;
+      text-align:left;
+    }
+    h3{
+      color:#262626;
+      font-family:'EmberLT', Helvetica, Arial, sans-serif;
+      font-size:16px;
+      font-style:normal;
+      font-weight:bold;
+      line-height:125%;
+      letter-spacing:normal;
+      text-align:left;
+    }
+    h4{
+      color:#262626;
+      font-family:Helvetica;
+      font-size:16px;
+      font-style:normal;
+      font-weight:bold;
+      line-height:125%;
+      letter-spacing:normal;
+      text-align:center;
+    }
+        hr {
+            border: none;
+            height: 2px;
+            /* Set the hr color */
+            color: #333; /* old IE */
+            background-color: #333; /* Modern Browsers */
+        }
+    #templatePreheader{
+      border-top:0;
+      border-bottom:0;
+    }
+    #templatePreheader .mcnTextContent,#templatePreheader .mcnTextContent p=
+{
+      color:#656565;
+      font-family:'EmberLT';
+      font-size:12px;
+      line-height:150%;
+      text-align:left;
+    }
+    #templatePreheader .mcnTextContent a,#templatePreheader .mcnTextContent=
+ p a{
+      color:#656565;
+      font-weight:normal;
+      text-decoration:underline;
+    }
+    #templateHeader{
+      border-top:0;
+      border-bottom:0;
+    }
+    #templateHeader .mcnTextContent,#templateHeader .mcnTextContent p{
+      color:#202020;
+      font-family:'EmberLT';
+      font-size:16px;
+      line-height:150%;
+      text-align:center;
+    }
+    #templateHeader .mcnTextContent a,#templateHeader .mcnTextContent p a{
+      color:#214CFB;
+      font-weight:normal;
+      text-decoration:none;
+    }
+    #templateUpperBody{
+      background-color:#ffffff;
+      border-top:0;
+      border-bottom:0;
+      padding-top:0;
+      padding-bottom:0;
+    }
+    #templateUpperBody .mcnTextContent,#templateUpperBody .mcnTextContent p=
+{
+      color:#262626;
+      font-family:'EmberLT';
+      font-size:16px;
+      line-height:150%;
+      text-align:center;
+    }
+    #templateUpperBody .mcnTextContent a,#templateUpperBody .mcnTextContent=
+ p a{
+      color:#214CFB;
+      font-weight:normal;
+      text-decoration:none;
+    }
+    #templateColumns{
+      background-color:#FFFFFF;
+      border-top:0;
+      border-bottom:0;
+      padding-top:0;
+      padding-bottom:0;
+    }
+    #templateColumns .columnContainer .mcnTextContent,#templateColumns .col=
+umnContainer .mcnTextContent p{
+      color:#262626;
+      font-family:'EmberLT';
+      font-size:16px;
+      line-height:150%;
+      text-align:center;
+    }
+    #templateColumns .columnContainer .mcnTextContent a,#templateColumns .c=
+olumnContainer .mcnTextContent p a{
+      color:#214CFB;
+      font-weight:normal;
+      text-decoration:underline;
+    }
+    #templateLowerBody{
+      background-color:#FFFFFF;
+      border-top:0;
+      border-bottom:0;
+      padding-top:0;
+      padding-bottom:9px;
+    }
+    #templateLowerBody .mcnTextContent,#templateLowerBody .mcnTextContent p=
+{
+      color:#262626;
+      font-family:'EmberLT';
+      font-size:16px;
+      line-height:150%;
+      text-align:center;
+    }
+    #templateLowerBody .mcnTextContent a,#templateLowperBody .mcnTextConten=
+t p a{
+      color:#214CFB;
+      font-weight:normal;
+      text-decoration:none;
+    }
+    #templateFooter{
+      border-top:0;
+      border-bottom:0;
+      padding-top:20px;
+      padding-bottom:20px;
+    }
+    #templateFooter .mcnTextContent,#templateFooter .mcnTextContent p{
+      color:#535353;
+      font-family:'EmberLT';
+      font-size:12px;
+      line-height:150%;
+      text-align:center;
+    }
+    #templateFooter .mcnTextContent a,#templateFooter .mcnTextContent p a{
+      color:#535353;
+      font-weight:normal;
+      text-decoration:underline;
+    }
+  @media only screen and (min-width:768px){
+    .templateContainer{
+      width:600px !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    body,table,td,p,a,li,blockquote{
+      -webkit-text-size-adjust:none !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    body{
+      width:100% !important;
+      min-width:100% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .columnWrapper{
+      max-width:100% !important;
+      width:100% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnImage{
+      width:100% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnCaptionTopContent,.mcnCaptionBottomContent,.mcnTextContentContainer=
+,.mcnBoxedTextContentContainer,.mcnImageGroupContentContainer,.mcnCaptionLe=
+ftTextContentContainer,.mcnCaptionRightTextContentContainer,.mcnCaptionLeft=
+ImageContentContainer,.mcnCaptionRightImageContentContainer,.mcnImageCardLe=
+ftTextContentContainer,.mcnImageCardRightTextContentContainer{
+      max-width:100% !important;
+      width:100% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnBoxedTextContentContainer{
+      min-width:100% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnImageGroupContent{
+      padding:9px !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnCaptionLeftContentOuter .mcnTextContent,.mcnCaptionRightContentOute=
+r .mcnTextContent{
+      padding-top:9px !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnImageCardTopImageContent,.mcnCaptionBlockInner .mcnCaptionTopConten=
+t:last-child .mcnTextContent{
+      padding-top:18px !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnImageCardBottomImageContent{
+      padding-bottom:9px !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnImageGroupBlockInner{
+      padding-top:0 !important;
+      padding-bottom:0 !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnImageGroupBlockOuter{
+      padding-top:9px !important;
+      padding-bottom:9px !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnTextContent,.mcnBoxedTextContentColumn{
+      padding-right:18px !important;
+      padding-left:18px !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnImageCardLeftImageContent,.mcnImageCardRightImageContent{
+      padding-right:18px !important;
+      padding-bottom:0 !important;
+      padding-left:18px !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcpreview-image-uploader{
+      display:none !important;
+      width:100% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    h1{
+      font-size:14px !important;
+      line-height:125% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    h2{
+      font-size:14px !important;
+      line-height:125% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    h3{
+      font-size:14px !important;
+      line-height:125% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    h4{
+      font-size:14px !important;
+      line-height:150% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    .mcnBoxedTextContentContainer .mcnTextContent,.mcnBoxedTextContentConta=
+iner .mcnTextContent p{
+      font-size:14px !important;
+      line-height:150% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    #templatePreheader{
+      display:none !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    #templatePreheader .mcnTextContent,#templatePreheader .mcnTextContent p=
+{
+      font-size:14px !important;
+      line-height:150% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    #templateHeader .mcnTextContent,#templateHeader .mcnTextContent p{
+      font-size:14px !important;
+      line-height:150% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    #templateUpperBody .mcnTextContent,#templateUpperBody .mcnTextContent p=
+{
+      font-size:14px !important;
+      line-height:150% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    #templateColumns .columnContainer .mcnTextContent,#templateColumns .col=
+umnContainer .mcnTextContent p{
+      font-size:14px !important;
+      line-height:150% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    #templateLowerBody .mcnTextContent,#templateLowerBody .mcnTextContent p=
+{
+      font-size:14px !important;
+      line-height:150% !important;
+    }
+
+} @media only screen and (max-width: 480px){
+    #templateFooter .mcnTextContent,#templateFooter .mcnTextContent p{
+      font-size:14px !important;
+      line-height:150% !important;
+    }
+
+}
+=09=09@media screen and (max-width: 420px) {
+=09=09u ~div {
+=09=09min-width: 95vw;
+=09=09margin: 0 auto !important;
+=09=09}
+}
+
+</style>
+</head>
+    <body style=3D"height: 100%;margin: 0;padding: 0;width: 100%;-ms-text-s=
+ize-adjust: 100%;-webkit-text-size-adjust: 100%;background-color: #ffffff;"=
+><img width=3D"1" height=3D"1" src=3D"https://www.amazon.com/gp/r.html?C=3D=
+3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:20191108190511b994acc5ea704=
+a8cadac587c4720p0na&R=3D6CZ8MH9S30Q3&T=3DO&U=3Dhttps%3A%2F%2Fimages-na.ssl-=
+images-amazon.com%2Fimages%2FG%2F01%2Fnav%2Ftransp.gif&H=3D39QK33BBS9HPW4PP=
+TR5BMYIANGWA&ref_=3Dpe_27882620_450381980_opens" />
+    <!--[if mso]>
+<style type=3D"text/css">
+body, table, td {font-family: Arial, Helvetica, sans-serif !important;}
+h1, h2, h3 {font-family: Arial, Helvetica, sans-serif !important;}
+</style>
+<![endif]-->
+    <div style=3D"display:none;font-size:1px;color:#333333;line-height:1px;=
+max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+
+</div>
+   =20
+        <center>
+            <table align=3D"center" border=3D"0" cellpadding=3D"0" cellspac=
+ing=3D"0" height=3D"100%" width=3D"100%" id=3D"bodyTable" style=3D"border-c=
+ollapse: collapse;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size=
+-adjust: 100%;-webkit-text-size-adjust: 100%;height: 100%;margin: 0;padding=
+: 0;width: 100%;background-color: #e8e8e8;">
+                <tr>
+                    <td align=3D"center" valign=3D"top" id=3D"bodyCell" sty=
+le=3D"mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text=
+-size-adjust: 100%;height: 100%;margin: 0;padding: 0;width: 100%;border-top=
+: 0;">
+                        <!-- BEGIN TEMPLATE // -->
+                        <table border=3D"0" cellpadding=3D"0" cellspacing=
+=3D"0" style=3D"border-collapse: collapse;mso-table-lspace: 0pt;mso-table-r=
+space: 0pt;-ms-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;backgr=
+ound-color: #e8e8e8;">
+                          =20
+              <tr>
+                <td align=3D"center" valign=3D"top" id=3D"templateHeader" w=
+idth=3D"100%" style=3D"mso-line-height-rule: exactly;-ms-text-size-adjust: =
+100%;-webkit-text-size-adjust: 100%;background-color: #e8e8e8;border-top: 0=
+;border-bottom: 0;padding-bottom: 20px;">
+                  <!--[if gte mso 9]>
+                  <table align=3D"center" border=3D"0" cellspacing=3D"0" ce=
+llpadding=3D"0" width=3D"600" style=3D"width:600px;">
+                  <tr>
+                  <td align=3D"center" valign=3D"top" width=3D"600" style=
+=3D"width:600px;">
+                  <![endif]-->
+                  <table align=3D"center" border=3D"0" cellpadding=3D"0" ce=
+llspacing=3D"0" width=3D"100%" class=3D"templateContainer" style=3D"border-=
+collapse: collapse;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-siz=
+e-adjust: 100%;-webkit-text-size-adjust: 100%;max-width: 600px !important;"=
+>
+                    <tr>
+                                      <td valign=3D"top" class=3D"headerCon=
+tainer" style=3D"mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-=
+webkit-text-size-adjust: 100%;"><table border=3D"0" cellpadding=3D"0" cells=
+pacing=3D"0" width=3D"100%" class=3D"mcnImageBlock" style=3D"min-width: 100=
+%;border-collapse: collapse;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms=
+-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;">
+    <tbody class=3D"mcnImageBlockOuter">
+            <tr>
+                <td valign=3D"top" style=3D"mso-line-height-rule: exactly;-=
+ms-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;" class=3D"mcnImag=
+eBlockInner">
+                    <table align=3D"left" width=3D"100%" border=3D"0" cellp=
+adding=3D"0" cellspacing=3D"0" class=3D"mcnImageContentContainer" style=3D"=
+min-width: 100%;border-collapse: collapse;mso-table-lspace: 0pt;mso-table-r=
+space: 0pt;-ms-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;">
+                        <tbody><tr>
+                            <td class=3D"mcnImageContent" valign=3D"top" st=
+yle=3D"padding-right: 9px;padding-left: 9px;padding-top: 0;padding-bottom: =
+0;text-align: center;mso-line-height-rule: exactly;-ms-text-size-adjust: 10=
+0%;-webkit-text-size-adjust: 100%;">
+
+
+                                        <img align=3D"center" alt=3D"Amazon=
+ Echo" src=3D"https://images-na.ssl-images-amazon.com/images/G/01/kindle/me=
+rch/2016/ECHO/Email/CRM/Default/Amazon_Echo_Logo_2.png" width=3D"223" style=
+=3D"max-width: 223px;padding-top: 20px;display: inline !important;vertical-=
+align: bottom;border: 0;height: auto;outline: none;text-decoration: none;-m=
+s-interpolation-mode: bicubic;" class=3D"mcnImage">
+
+
+                            </td>
+                        </tr>
+                    </tbody></table>
+                </td>
+            </tr>
+    </tbody>
+</table></td>
+                    </tr>
+                  </table>
+                  <!--[if gte mso 9]>
+                  </td>
+                  </tr>
+                  </table>
+                  <![endif]-->
+                </td>
+                            </tr>
+             =20
+             =20
+              <tr>
+                <td align=3D"center" valign=3D"top" id=3D"templateLowerBody=
+" style=3D"mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit=
+-text-size-adjust: 100%;background-color: #e8e8e8;border-top: 0;border-bott=
+om: 0;padding-top: 0;padding-left:20px;padding-right:20px;">
+                  <!--[if gte mso 9]>
+                  <table align=3D"center" border=3D"0" cellspacing=3D"0" ce=
+llpadding=3D"0" width=3D"600" style=3D"width:600px;">
+                  <tr>
+                  <td align=3D"center" valign=3D"top" width=3D"600" style=
+=3D"width:600px;">
+                  <![endif]-->
+                  <table align=3D"center" border=3D"0" cellpadding=3D"0" ce=
+llspacing=3D"0" width=3D"100%" class=3D"templateContainer" style=3D"border-=
+collapse: collapse;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-siz=
+e-adjust: 100%;-webkit-text-size-adjust: 100%;max-width: 600px !important;"=
+>
+                   =20
+                                       =20
+                                        <tr>
+                                      <td valign=3D"top" class=3D"bodyConta=
+iner" style=3D"mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-we=
+bkit-text-size-adjust: 100%;background-color:#e8e8e8;">
+
+                               =20
+<!-- GLOBAL TEMPLATE -->
+                               =20
+<!-- Alexa's Corner - HERO CONTENT -->
+
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" clas=
+s=3D"mcnTextBlock" style=3D"min-width: 100%;border-collapse: collapse;mso-t=
+able-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-webkit-t=
+ext-size-adjust: 100%;">
+    <tbody class=3D"mcnTextBlockOuter">
+        <tr>
+            <td valign=3D"top" class=3D"mcnTextBlockInner" style=3D"mso-lin=
+e-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text-size-adjust:=
+ 100%;">
+
+                <table align=3D"left" border=3D"0" cellpadding=3D"0" cellsp=
+acing=3D"0" width=3D"100%" style=3D"min-width: 100%;border-collapse: collap=
+se;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-=
+webkit-text-size-adjust: 100%;" class=3D"mcnTextContentContainer">
+                    <tbody><tr>
+
+                        <td valign=3D"top" class=3D"mcnTextContent" style=
+=3D"padding-left:25px;padding-right:25px; padding-top:20px; padding-bottom:=
+20px;color: #262626;font-size: 16px;text-align: Left;mso-line-height-rule: =
+exactly;-ms-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;word-brea=
+k: break-word;font-family: 'EmberHE', Helvetica, Arial, sans-serif;line-hei=
+ght: 150%;background-color:#ffffff;">
+
+                           <p style=3D"color: #262626;font-size: 16px;font-=
+weight:300;text-align: center;margin: 10px 0;padding-bottom:0px;padding-rig=
+ht:20px;padding-left:20px;mso-line-height-rule: exactly;-ms-text-size-adjus=
+t: 100%;-webkit-text-size-adjust: 100%;font-family: 'EmberHE', Helvetica, A=
+rial, sans-serif;line-height: 180%;"><span style=3D"font-family: 'EmberHE',=
+ Helvetica, Arial, sans-serif !important;"><h1 style=3D"color: #262626;font=
+-size: 16px;font-weight:bold;text-align: left;margin: 10px 0;padding-bottom=
+:0px;padding-right:20px;padding-left:20px;mso-line-height-rule: exactly;-ms=
+-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;font-family: 'EmberH=
+E', Helvetica, Arial, sans-serif;line-height: 100%;"><b><i>Turning over a n=
+ew leaf.</i></b></h1><h3 style=3D"color: #262626;font-size: 16px;font-weigh=
+t:300;text-align: left;margin: 10px 0;padding-bottom:0px;padding-right:20px=
+;padding-left:20px;mso-line-height-rule: exactly;-ms-text-size-adjust: 100%=
+;-webkit-text-size-adjust: 100%;font-family: 'EmberLT', Helvetica, Arial, s=
+ans-serif;line-height: 100%;">Just say, =E2=80=9CAlexa, tell me a joke abou=
+t fall=E2=80=9D</h3></span></p>
+
+                        </td>
+                    </tr>
+                </tbody></table>
+
+            </td>
+        </tr>
+    </tbody>
+</table>=20
+
+<!-- Editorial -->
+                                               =20
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" clas=
+s=3D"mcnTextBlock" style=3D"min-width: 100%;border-collapse: collapse;mso-t=
+able-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-webkit-t=
+ext-size-adjust: 100%;">
+    <tbody class=3D"mcnTextBlockOuter">
+        <tr>
+            <td valign=3D"top" class=3D"mcnTextBlockInner" style=3D"mso-lin=
+e-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text-size-adjust:=
+ 100%;">
+
+                <table align=3D"left" border=3D"0" cellpadding=3D"0" cellsp=
+acing=3D"0" width=3D"100%" style=3D"min-width: 100%;border-collapse: collap=
+se;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-=
+webkit-text-size-adjust: 100%;" class=3D"mcnTextContentContainer">
+                    <tbody><tr>
+
+                        <td valign=3D"top" class=3D"mcnTextContent" style=
+=3D"padding-left:25px;padding-right:25px; padding-top:0px; color: #262626;f=
+ont-size: 16px;text-align: Left;mso-line-height-rule: exactly;-ms-text-size=
+-adjust: 100%;-webkit-text-size-adjust: 100%;word-break: break-word;font-fa=
+mily: &#39;EmberLT&#39;, Helvetica, Arial, sans-serif;line-height: 180%;bac=
+kground-color:#ffffff;">
+
+                            <p style=3D"color: #262626;font-size: 16px;font=
+-weight:300;text-align: center;margin: 10px 0;padding-bottom:0px;padding-ri=
+ght:20px;padding-left:20px;mso-line-height-rule: exactly;-ms-text-size-adju=
+st: 100%;-webkit-text-size-adjust: 100%;font-family: &#39;EmberLT&#39;, Hel=
+vetica, Arial, sans-serif;line-height: 180%;"><span style=3D"font-family: &=
+#39;EmberLT&#39;, Helvetica, Arial, sans-serif !important;">
+                                </span></p><h2 style=3D"color: #262626;font=
+-size: 16px;font-weight:bold;text-align: left;margin: 0px 0;padding-bottom:=
+0px;padding-right:20px;padding-left:20px;mso-line-height-rule: exactly;-ms-=
+text-size-adjust: 100%;-webkit-text-size-adjust: 100%;font-family: &#39;Emb=
+erHE&#39;, Helvetica, Arial, sans-serif;line-height: 100%;">
+                                   =20
+                                 <b>WEEKLY SPOTLIGHT</b><hr></h2>
+                               =20
+                               =20
+                               =20
+                                <ul style=3D"font-size: 16px;font-family: '=
+EmberLT', Helvetica, Arial, sans-serif !important;line-height: 180%;">
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                    <li>=E2=80=9CAlexa, make a note=E2=80=
+=9D
+                                   =20
+                                    <br/><i><font color=3D#737373>Now you c=
+an take notes with Alexa and retrieve them later by asking, "Alexa, what ar=
+e my notes?"</font></i>
+                                   =20
+                                   =20
+                                    </li>
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                    <li>=E2=80=9CAlexa, add slippers to my =
+Wish List=E2=80=9D
+                                    <br/><i><font color=3D#737373>Let peopl=
+e know what you want for your birthday, the holidays, or any occasion. <a h=
+ref=3D"https://smile.amazon.com/gp/r.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FL=
+N8&M=3Durn:rtn:msg:20191108190511b994acc5ea704a8cadac587c4720p0na&R=3D3DR8Z=
+NTDX3Q1U&T=3DC&U=3Dhttps%3A%2F%2Fsmile.amazon.com%2Falexa-voice-shopping%2F=
+b%3Fie%3DUTF8%26node%3D14552177011%26ref_%3Dpe_27882620_450381980_sub_aucc_=
+pace_en_us_wishList&H=3DRHS79FDEMSR5JUDW850IK5XKYHSA&ref_=3Dpe_27882620_450=
+381980_sub_aucc_pace_en_us_wishList">Learn more</a>.</font></i>
+                                    </li>
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                    <li>=E2=80=9CAlexa, play the Best of 3D=
+ Music=E2=80=9D
+                                   =20
+                                    <br/><i><font color=3D#737373>Echo Stud=
+io is our new, high-fidelity smart speaker. With an Amazon Music HD trial o=
+r subscription you can play 50 million songs in high-def plus a growing lib=
+rary of music mastered in 3D.</font></i>
+                                   =20
+                                   =20
+                                    </li>
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                                   =20
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody></table>
+            </td>
+        </tr>
+    </tbody>
+</table>                                             =20
+                                         =20
+<!-- THINGS TO TRY -->
+                                               =20
+<table border=3D"0" cellpadding=3D"0" cellspacing=3D"0" width=3D"100%" clas=
+s=3D"mcnTextBlock" style=3D"min-width: 100%;border-collapse: collapse;mso-t=
+able-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-webkit-t=
+ext-size-adjust: 100%;">
+    <tbody class=3D"mcnTextBlockOuter">
+        <tr>
+            <td valign=3D"top" class=3D"mcnTextBlockInner" style=3D"mso-lin=
+e-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text-size-adjust:=
+ 100%;">
+
+                <table align=3D"left" border=3D"0" cellpadding=3D"0" cellsp=
+acing=3D"0" width=3D"100%" style=3D"min-width: 100%;border-collapse: collap=
+se;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-=
+webkit-text-size-adjust: 100%;" class=3D"mcnTextContentContainer">
+                    <tbody><tr>
+
+                        <td valign=3D"top" class=3D"mcnTextContent" style=
+=3D"padding-left:25px;padding-right:25px; padding-top:0px; color: #262626;f=
+ont-size: 16px;text-align: Left;mso-line-height-rule: exactly;-ms-text-size=
+-adjust: 100%;-webkit-text-size-adjust: 100%;word-break: break-word;font-fa=
+mily: &#39;EmberLT&#39;, Helvetica, Arial, sans-serif;line-height: 180%;bac=
+kground-color:#ffffff;">
+
+                            <p style=3D"color: #262626;font-size: 16px;font=
+-weight:300;text-align: center;margin: 10px 0;padding-bottom:0px;padding-ri=
+ght:20px;padding-left:20px;mso-line-height-rule: exactly;-ms-text-size-adju=
+st: 100%;-webkit-text-size-adjust: 100%;font-family: &#39;EmberLT&#39;, Hel=
+vetica, Arial, sans-serif;line-height: 180%;"><span style=3D"font-family: &=
+#39;EmberLT&#39;, Helvetica, Arial, sans-serif !important;">
+                                </span></p><h2 style=3D"color: #262626;font=
+-size: 16px;font-weight:bold;text-align: left;margin: 0px 0;padding-bottom:=
+0px;padding-right:20px;padding-left:20px;mso-line-height-rule: exactly;-ms-=
+text-size-adjust: 100%;-webkit-text-size-adjust: 100%;font-family: &#39;Emb=
+erHE&#39;, Helvetica, Arial, sans-serif;line-height: 100%;">
+                                   =20
+                                 <b>THINGS TO TRY</b><hr></h2>
+                                <ul style=3D"font-size: 16px;font-family: '=
+EmberLT', Helvetica, Arial, sans-serif !important;line-height: 180%;">
+                                    <li>=E2=80=9CAlexa, play something chil=
+l=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, what is FreeTime Un=
+limited?=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, pair my phone=E2=80=
+=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, play popular rock s=
+ongs=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, play news from ESPN=
+ Flash Briefing=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, play the Sims=E2=80=
+=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, create a vacation l=
+ist=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, what=E2=80=99s the =
+best coffee maker?=E2=80=9D
+                                        <br/><i><font color=3D#737373>When =
+you need a recommendation, just ask Alexa. Alexa will suggest items based o=
+n real Amazon customer reviews and ratings. <a href=3D"https://smile.amazon=
+.com/gp/r.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:20191108=
+190511b994acc5ea704a8cadac587c4720p0na&R=3D25GG6B7T1JGNP&T=3DC&U=3Dhttps%3A=
+%2F%2Fsmile.amazon.com%2Falexa-voice-shopping%2Fb%3Fie%3DUTF8%26node%3D1455=
+2177011%26ref_%3Dpe_27882620_450381980_sub_aucc_pace_en_us_Shopping&H=3DMMF=
+Q8SGOWG7CN7AVKOMKEMKWHRQA&ref_=3Dpe_27882620_450381980_sub_aucc_pace_en_us_=
+Shopping">Learn more</a>.</font></i>
+                                        </li>
+                                    <li>=E2=80=9CAlexa, help me listen to l=
+ive sports=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, how long will it ta=
+ke to get to San Francisco from Los Angeles?=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, what's free from Au=
+dible?=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, how did you get you=
+r name?=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, when I say 'it's pa=
+rty time', play disco music=E2=80=9D
+                                        <br/><i><font color=3D#737373>Now y=
+ou can create Routines by voice. Just tell Alexa the phrase you want to say=
+ and the action she should play.</font></i>
+                                        </li>
+                                    <li>=E2=80=9CAlexa, what's on my calend=
+ar?=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, set the background =
+to my photos=E2=80=9D</li>
+                                       =20
+                                       =20
+                                    <li>=E2=80=9CAlexa, what are my notific=
+ations?=E2=80=9D
+                                        <br/><i><font color=3D#737373>Alexa=
+ can notify you on the status of your Amazon delivery. When the yellow ligh=
+t is pulsing on your Echo device, just ask Alexa. <a href=3D"https://smile.=
+amazon.com/gp/r.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:20=
+191108190511b994acc5ea704a8cadac587c4720p0na&R=3D2PR7A8TRNBSVA&T=3DC&U=3Dht=
+tps%3A%2F%2Fsmile.amazon.com%2Fb%3Fie%3DUTF8%26node%3D17892257011%26ref_%3D=
+pe_27882620_450381980_sub_aucc_pace_en_us_sub_aucc_us_crm&H=3DFVMGN8I1HOMNQ=
+11ZJTQUWEQ9J9AA&ref_=3Dpe_27882620_450381980_sub_aucc_pace_en_us_sub_aucc_u=
+s_crm">Learn more</a>.</font></i>
+                                        </li>
+
+                                </ul>                                      =
+               =20
+                        <p></p>
+
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </tbody>
+</table>
+                                         =20
+                                =20
+<!--END OF GLOBAL TEMPLATE -->
+
+</td>
+                    </tr>
+                  </table>
+                  <!--[if gte mso 9]>
+                  </td>
+                  </tr>
+                  </table>
+                  <![endif]-->
+                </td>
+                            </tr>
+                           =20
+<!--FOOTER-->
+                           =20
+<!--FOOTER-->
+                           =20
+                            <tr>
+                <td align=3D"center" valign=3D"top" id=3D"templateFooter" s=
+tyle=3D"mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-te=
+xt-size-adjust: 100%;background-color: #e8e8e8;border-top: 0;border-bottom:=
+ 0;padding-top:20px; padding-bottom: 20px;">
+                  <!--[if gte mso 9]>
+                  <table align=3D"center" border=3D"0" cellspacing=3D"0" ce=
+llpadding=3D"0" width=3D"600" style=3D"width:600px;">
+                  <tr>
+                  <td align=3D"center" valign=3D"top" width=3D"600" style=
+=3D"width:600px;">
+                  <![endif]-->
+                  <table align=3D"center" border=3D"0" cellpadding=3D"0" ce=
+llspacing=3D"0" width=3D"100%" class=3D"templateContainer" style=3D"border-=
+collapse: collapse;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-siz=
+e-adjust: 100%;-webkit-text-size-adjust: 100%;max-width: 600px !important;"=
+>
+                    <tr>
+                                      <td valign=3D"top" class=3D"footerCon=
+tainer" style=3D"mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-=
+webkit-text-size-adjust: 100%;"><table border=3D"0" cellpadding=3D"0" cells=
+pacing=3D"0" width=3D"100%" class=3D"mcnTextBlock" style=3D"min-width: 100%=
+;border-collapse: collapse;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-=
+text-size-adjust: 100%;-webkit-text-size-adjust: 100%;">
+    <tbody class=3D"mcnTextBlockOuter">
+        <tr>
+            <td valign=3D"top" class=3D"mcnTextBlockInner" style=3D"mso-lin=
+e-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text-size-adjust:=
+ 100%;">
+
+                <table align=3D"left" border=3D"0" cellpadding=3D"0" cellsp=
+acing=3D"0" width=3D"100%" style=3D"min-width: 100%;border-collapse: collap=
+se;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-=
+webkit-text-size-adjust: 100%;" class=3D"mcnTextContentContainer">
+                    <tbody><tr>
+
+                        <td valign=3D"top" class=3D"mcnTextContent" style=
+=3D"padding-left:20px; padding-right:10px; line-height: 150%;text-align: ce=
+nter;mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text-=
+size-adjust: 100%;word-break: break-word;color: #535353;font-family: 'Ember=
+LT', Helvetica, Arial, sans-serif;font-size: 12px;">
+                           =20
+
+                            <p style=3D"line-height: 150%;text-align: cente=
+r;margin: 10px 0;padding: 0;mso-line-height-rule: exactly;-ms-text-size-adj=
+ust: 100%;-webkit-text-size-adjust: 100%;color: #535353;font-family: 'Ember=
+LT', Helvetica, Arial, sans-serif;font-size: 12px;"><span style=3D"font-fam=
+ily: 'EmberLT', Helvetica, Arial, sans-serif !important;font-size:16px;">Fo=
+r more things to try, visit our <a href=3D"https://smile.amazon.com/gp/r.ht=
+ml?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:20191108190511b994ac=
+c5ea704a8cadac587c4720p0na&R=3D8H3NCHFBTJQP&T=3DC&U=3Dhttps%3A%2F%2Fsmile.a=
+mazon.com%2Fb%3Fie%3DUTF8%26node%3D17934671011%26ref_%3Dpe_27882620_4503819=
+80_AuCC_CRM_aeg&H=3DZCS80GXE1UFPXARZLTWOGTUBOFCA&ref_=3Dpe_27882620_4503819=
+80_AuCC_CRM_aeg" target=3D"_blank">Alexa guide</a>, ask "Alexa, what can yo=
+u do?" or follow us: </span></p>
+                               =20
+<!--Social Links-->                                               =20
+
+<!--Social Links-->                                               =20
+
+<table cellpadding=3D"0" cellspacing=3D"0">
+    <tr>
+        <td class=3D"pattern" width=3D"540" align=3D"center">
+            <table cellpadding=3D"0" cellspacing=3D"0">
+                <tr>
+                    <td class=3D"col col-left" width=3D"180" align=3D"left"=
+ valign=3D"top">
+                        <table cellpadding=3D"0" cellspacing=3D"0">
+                            <tr>
+                                <td align=3D"center" >
+                                    <table cellpadding=3D"5px" cellspacing=
+=3D"0">
+                                        <tr>
+                                            <td align=3D"center">
+                                                <a href=3D"https://smile.am=
+azon.com/gp/f.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:2019=
+1108190511b994acc5ea704a8cadac587c4720p0na&R=3D1CXMLD1SKIAWJ&T=3DC&U=3Dhttp=
+s%3A%2F%2Fsmile.amazon.com%2Fgp%2Fredirect.html%3Fref_%3Dpe_27882620_450381=
+980_AuCC_CRM_AlexaFacebook%26location%3Dhttps%3A%2F%2Fwww.facebook.com%2Fam=
+azonalexa%26token%3DC8299E89A1BE8A3136719D0E5DFDABED521E6D35%26source%3Dsta=
+ndards&H=3DHAQFNAFPYGPNZ5ZUZS1ZJZNXROCA&ref_=3Dpe_27882620_450381980_AuCC_C=
+RM_AlexaFacebook" target=3D"_blank"><img align=3D"center" alt=3D"Follow us =
+on Facebook." src=3D"https://images-na.ssl-images-amazon.com/images/G/01/ki=
+ndle/merch/2017/ECHO/Email/CRM/Other/echo-crm-socialmedia-sharing-facebook2=
+-2x.png" width=3D"180" style=3D"max-width: 180px;display: inline !important=
+;vertical-align: bottom;border: 0;height: auto;outline: none;text-decoratio=
+n: none;-ms-interpolation-mode: bicubic;" class=3D"mcnImage"></a>
+                                            </td>
+                                        </tr>
+                                       =20
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td class=3D"col col-mid" width=3D"180" align=3D"center=
+" valign=3D"top">
+                        <table cellpadding=3D"0" cellspacing=3D"0">
+                            <tr>
+                                <td align=3D"center" >
+                                    <table cellpadding=3D"5px" cellspacing=
+=3D"0">
+                                        <tr>
+                                            <td align=3D"center">
+                                                <a href=3D"https://smile.am=
+azon.com/gp/f.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:2019=
+1108190511b994acc5ea704a8cadac587c4720p0na&R=3D11B1XDMCI95RB&T=3DC&U=3Dhttp=
+s%3A%2F%2Fsmile.amazon.com%2Fgp%2Fredirect.html%3Fref_%3Dpe_27882620_450381=
+980_AuCC_CRM_AlexaTwitter%26location%3Dhttps%3A%2F%2Ftwitter.com%2Falexa99%=
+26token%3D6074CEB50D12DA0A6AACC6B24AB5995F77A38FBF%26source%3Dstandards&H=
+=3DUYQE98RYSM4YHCQIRCPCZE92FIQA&ref_=3Dpe_27882620_450381980_AuCC_CRM_Alexa=
+Twitter" target=3D"_blank"><img align=3D"center" alt=3D"Follow us on Twitte=
+r." src=3D"https://images-na.ssl-images-amazon.com/images/G/01/kindle/merch=
+/2017/ECHO/Email/CRM/Other/echo-crm-socialmedia-sharing-twitter2-2x.png" wi=
+dth=3D"180" style=3D"max-width: 180px;display: inline !important;vertical-a=
+lign: bottom;border: 0;height: auto;outline: none;text-decoration: none;-ms=
+-interpolation-mode: bicubic;" class=3D"mcnImage"></a>
+                                            </td>
+                                        </tr>
+                                       =20
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td class=3D"col" width=3D"180" align=3D"center" valign=
+=3D"top">
+                        <table cellpadding=3D"0" cellspacing=3D"0">
+                            <tr>
+                                <td align=3D"center">
+                                    <table cellpadding=3D"5px" cellspacing=
+=3D"0">
+                                        <tr>
+                                            <td align=3D"center" >
+                                                <a href=3D"https://smile.am=
+azon.com/gp/f.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:2019=
+1108190511b994acc5ea704a8cadac587c4720p0na&R=3D2NIE9DBZNKQE9&T=3DC&U=3Dhttp=
+s%3A%2F%2Fsmile.amazon.com%2Fgp%2Fredirect.html%3Fref_%3Dpe_27882620_450381=
+980_AuCC_CRM_AlexaYoutube%26location%3Dhttps%3A%2F%2Fwww.youtube.com%2Fchan=
+nel%2FUCz2-0uvBJt-AwoiFSyMb_yQ%26token%3DC38752489DD1EF54AA63D2C4071D67424C=
+4B6FFD%26source%3Dstandards&H=3DETXRBUVBNFOEKYM4BVHYZOVEIK0A&ref_=3Dpe_2788=
+2620_450381980_AuCC_CRM_AlexaYoutube" target=3D"_blank"><img align=3D"cente=
+r" alt=3D"Follow us on YouTube." src=3D"https://images-na.ssl-images-amazon=
+.com/images/G/01/kindle/merch/2017/ECHO/Email/CRM/Other/echo-crm-socialmedi=
+a-sharing-youtube2-2x.png" width=3D"180" style=3D"max-width: 180px;display:=
+ inline !important;vertical-align: bottom;border: 0;height: auto;outline: n=
+one;text-decoration: none;-ms-interpolation-mode: bicubic;" class=3D"mcnIma=
+ge"></a>
+                                            </td>
+                                        </tr>
+                                       =20
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table><!--End of Social Links-->    =20
+                           =20
+<p style=3D"line-height: 150%;text-align: center;margin: 10px 0;padding: 0;=
+mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text-size-=
+adjust: 100%;color: #535353;font-family: 'EmberLT', Helvetica, Arial, sans-=
+serif;font-size: 12px;"><span style=3D"font-family: 'EmberLT', Helvetica, A=
+rial, sans-serif !important;font-size:14px;">Your pals can get this email e=
+very week, too&mdash;just ask them to <a href=3D"https://smile.amazon.com/g=
+p/f.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:20191108190511=
+b994acc5ea704a8cadac587c4720p0na&R=3DC1YUJ2PLJ87Q&T=3DC&U=3Dhttps%3A%2F%2Fs=
+mile.amazon.com%2Fgp%2Fgss%2Fdetail%2F42015080%3Fref_%3Dpe_27882620_4503819=
+80_AuCC_CRM_subscription&H=3DQKLCKJBCXW9XCOV5D9R3RIVYYAWA&ref_=3Dpe_2788262=
+0_450381980_AuCC_CRM_subscription" target=3D"_blank" style=3D"text-decorati=
+on:underline; color:#666666;">subscribe</a>.</span></p>                    =
+             =20
+                          =20
+<p style=3D"line-height: 120%;text-align: center;margin: 10px 0;padding: 0;=
+mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text-size-=
+adjust: 100%;color: #535353;font-family: 'EmberLT', Helvetica, Arial, sans-=
+serif;font-size: 12px;padding-top:10px;"><span style=3D"font-family: 'Ember=
+LT', Helvetica, Arial, sans-serif !important;font-size:11px;">&copy; 2019 <=
+a href=3D"https://smile.amazon.com/gp/r.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M7=
+3FLN8&M=3Durn:rtn:msg:20191108190511b994acc5ea704a8cadac587c4720p0na&R=3D2F=
+SKTMCTDE2YZ&T=3DC&U=3Dhttps%3A%2F%2Fsmile.amazon.com%3Fref_%3Dpe_27882620_4=
+50381980_AuCC_CRM_footer-homepage&H=3DWCJ1UXYV54T4A2XBOJEAWZE3O48A&ref_=3Dp=
+e_27882620_450381980_AuCC_CRM_footer" target=3D_blank>Amazon.com</a>, Inc. =
+or its affiliates. All rights reserved. Amazon, Echo, Alexa and all related=
+ logos are trademarks of Amazon.com, Inc. or its affiliates. <a href=3D"htt=
+ps://smile.amazon.com/gp/r.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn=
+:rtn:msg:20191108190511b994acc5ea704a8cadac587c4720p0na&R=3D136Y64TFMN472&T=
+=3DC&U=3Dhttps%3A%2F%2Fsmile.amazon.com%3Fref_%3Dpe_27882620_450381980_AuCC=
+_CRM_homepage&H=3DN7BQRAHQZWITFD9GQBE73FSDSHCA&ref_=3Dpe_27882620_450381980=
+_AuCC_CRM_homepage" target=3D_blank>Amazon.com</a>, 410 Terry Avenue N., Se=
+attle, WA 98109-5210. Reference: 450381980</span></p>
+
+<p style=3D"line-height: 100%;text-align: center;margin: 10px 0;padding: 0;=
+mso-line-height-rule: exactly;-ms-text-size-adjust: 100%;-webkit-text-size-=
+adjust: 100%;color: #535353;font-family: 'EmberLT', Helvetica, Arial, sans-=
+serif;font-size: 12px;padding-bottom:20px;"><span style=3D"font-family: 'Em=
+berLT', Helvetica, Arial, sans-serif !important;font-size:11px;">Please not=
+e that this message was sent to the following email address: jonathanessex@=
+me.com. Rather not receive these emails? Please opt-out <a href=3D"https://=
+smile.amazon.com/gp/f.html?C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:=
+msg:20191108190511b994acc5ea704a8cadac587c4720p0na&R=3DCPGAAG75RB3G&T=3DX&U=
+=3Dhttps%3A%2F%2Fsmile.amazon.com%2F%2Fgp%2Fgss%2Fu%2F1JaRKA1-DxMVdbDrDJkSg=
+80bN6vJbyG1Ielr9xPAVQlWkNadjJMQn4SC3gi8fI-Zb&H=3DYRFAQ9BIJCM11HHKBBSDVKATEH=
+KA" style=3D"color:text-decoration:underline;">here</a>.</span></p>
+
+                           =20
+                        </td>
+                    </tr>
+                </tbody></table>
+
+            </td>
+        </tr>
+    </tbody>
+</table></td>
+                    </tr>
+                  </table>
+                  <!--[if gte mso 9]>
+                  </td>
+                  </tr>
+                  </table>
+                  <![endif]-->
+                </td>
+                            </tr>
+<!-- End of Footer --><!-- END OF FOOTER -->                           =20
+                           =20
+                        </table>
+                        <!-- // END TEMPLATE -->
+                    </td>
+                </tr>
+            </table>
+        </center>
+     <img width=3D"1" height=3D"1" src=3D"https://www.amazon.com/gp/r.html?=
+C=3D3IR36HGOJK09I&K=3D3D5HW1M73FLN8&M=3Durn:rtn:msg:20191108190511b994acc5e=
+a704a8cadac587c4720p0na&R=3D2QWFE8WO3F0IS&T=3DE&U=3Dhttps%3A%2F%2Fimages-na=
+.ssl-images-amazon.com%2Fimages%2FG%2F01%2Fnav%2Ftransp.gif&H=3DV4HUJVIAMLH=
+YAHLIYJAO4YOA7X0A&ref_=3Dpe_27882620_450381980_open" /></body>
+
+------=_Part_1415188_2055156421.1573239911046--

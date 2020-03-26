@@ -1,0 +1,119 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+  id "org.jdrupes.mdoclet" version "1.0.5"
+  id 'org.springframework.boot' version '1.5.22.RELEASE' apply false
+}
+
+String propValue(String propName, String defValue) {
+    (project.hasProperty(propName) && project.getProperty(propName)) ? project.getProperty(propName) : defValue
+}
+
+version = propValue("ci_version","master");
+group = "com.softwareplumbers.dms"
+
+def SNAPSHOT_BUILDS = ["master"];
+
+if (SNAPSHOT_BUILDS.contains(version)) { version = version + "-SNAPSHOT" };
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'io.spring.dependency-management'
+
+test {
+	systemProperties = System.properties
+    systemProperty "doctane.keystore.password", propValue("keystorePassword", "changeme")
+    systemProperty "spring.profiles.active", "test"
+
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
+
+javadoc {
+    source = sourceSets.main.allJava
+    classpath = configurations.compile
+}
+
+jar {
+	enabled = true
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+	classifier 'sources'
+	from sourceSets.main.allSource
+}
+
+
+artifacts {
+	archives sourcesJar
+    archives jar
+}
+
+repositories {
+    maven { url propValue("proxyMavenCentral", "https://repo.maven.apache.org/maven2/") }
+    maven { url 'https://nexus.softwareplumbers.com/repository/maven-oss' }
+    maven { url 'https://nexus.softwareplumbers.com/repository/maven-oss-snapshot' }
+    maven { 
+      url 'https://nexus.softwareplumbers.com/repository/maven-oss' 
+      credentials { 
+        username propValue("mavenUploadUser","") 
+        password propValue("mavenUploadPassword","")
+      }
+    }
+    maven { 
+      url 'https://nexus.softwareplumbers.com/repository/maven-oss-snapshot' 
+      credentials { 
+        username propValue("mavenUploadUser","") 
+        password propValue("mavenUploadPassword","")
+      }
+    }
+}
+
+uploadArchives {
+  dependsOn check
+  repositories {
+    mavenDeployer {
+      repository(url: "https://nexus.softwareplumbers.com/repository/maven-oss") {
+        authentication(userName: propValue("mavenUploadUser",""), password: propValue("mavenUploadPassword",""))
+      }
+      snapshotRepository(url: "https://nexus.softwareplumbers.com/repository/maven-oss-snapshot") {
+        authentication(userName: propValue("mavenUploadUser",""), password: propValue("mavenUploadPassword",""))
+      }
+    }
+  }
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+configurations.all {
+    // Check for updates to dependencies marked 'changing' every build
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
+dependencyManagement {      
+	imports {
+		mavenBom 'org.springframework.boot:spring-boot-dependencies:1.5.22.RELEASE'
+	}
+}
+
+dependencies {
+    compile group: 'com.softwareplumbers.oss', name: 'dms-interface-core', version: 'master-SNAPSHOT'
+    compile group: 'com.softwareplumbers.oss', name: 'pipedstream', version: 'master-SNAPSHOT'
+    compile group: 'javax.json', name: 'javax.json-api', version: '1.1.2'
+    compile group: 'org.apache.commons', name: 'commons-text', version: '1.8'
+    compile group: 'org.springframework', name: 'spring-context'
+
+    runtime group: 'org.glassfish', name: 'javax.json', version: '1.1.2'
+
+    testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-jdbc'
+    testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test'
+    testCompile group: 'com.softwareplumbers.oss', name: 'dms-interface-core', version: 'master-SNAPSHOT', classifier: 'tests'
+    testCompile group: 'com.h2database', name: 'h2', version: '1.4.200'
+    testCompile group: 'com.zaxxer', name: 'HikariCP', version: '3.4.2'
+}
