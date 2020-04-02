@@ -1,14 +1,8 @@
 package com.softwareplumbers.dms.service.sql;
 
-import com.softwareplumbers.dms.service.sql.Operations;
-import com.softwareplumbers.dms.service.sql.Filestore;
-import com.softwareplumbers.dms.service.sql.SQLAPIFactory;
-import com.softwareplumbers.dms.service.sql.SQLRepositoryService;
-import com.softwareplumbers.dms.service.sql.Schema;
-import com.softwareplumbers.dms.service.sql.Templates;
-import com.softwareplumbers.dms.service.sql.LocalFilesystem;
 import com.softwareplumbers.dms.common.test.TestModel;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
@@ -35,8 +29,8 @@ public class LocalConfig {
         return new LocalFilesystem(Paths.get("/var/tmp/doctane/filestore"));
     }
     
-    @Bean public SQLRepositoryService service() {
-        return new SQLRepositoryService(api(), filestore());
+    @Bean public SQLRepositoryService service() throws SQLException {
+        return new SQLRepositoryService(api(), filestore(), SQLRepositoryService.CreateOption.RECREATE);
     }
     
     @Bean public SQLAPIFactory api() {

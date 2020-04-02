@@ -64,6 +64,13 @@ Then finally we can create the SQLRepositoryService bean itself:
 ```xml 
     <bean id="base" class="com.softwareplumbers.dms.service.sql.SQLRepositoryService" scope="singleton">
         <property name="filestore" ref="filestore"/> 
+        <property name="createOption" value="UPDATE"/>
     </bean>
 ```
+
+The createOption property above is optional and determines what SQL scripts will be run on 
+service startup. Possible values are CREATE, UPDATE, and RECREATE. CREATE will attempt to
+create the database schema. UPDATE will attempt to update the schema (although this is not
+always possible). RECREATE will drop any existing database objects and recreate the schema
+from scratch. If the option is not included, no attempt will be made to modify the schema.
  

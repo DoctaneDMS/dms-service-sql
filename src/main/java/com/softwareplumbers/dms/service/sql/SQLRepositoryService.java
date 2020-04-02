@@ -27,9 +27,6 @@ import com.softwareplumbers.dms.service.sql.SQLAPI.Timestamped;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.Comparator;
@@ -43,12 +40,20 @@ import javax.json.JsonObject;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Required;
 
-/**
+/** Implementation of Doctane RepositoryService using a SQL database and a Filestore.
  *
- * @author jonathan
+ * @author Jonathan Essex
  */
 public class SQLRepositoryService implements RepositoryService {
+    
+    /** Options controlling DDL run on startup */
+    public static enum CreateOption {
+        /** Run the create and update scripts */ CREATE,
+        /** Run just the update scripts */ UPDATE,
+        /** Run the drop, create, and update scrips */ RECREATE
+    }
     
     private static XLogger LOG = XLoggerFactory.getXLogger(SQLRepositoryService.class);
     
@@ -72,9 +77,10 @@ public class SQLRepositoryService implements RepositoryService {
         return ()->LOG.throwing(new Exceptions.InvalidWorkspace(id, path));
     }
        
-    public SQLRepositoryService(SQLAPIFactory dbFactory, Filestore<Id> filestore) {
+    public SQLRepositoryService(SQLAPIFactory dbFactory, Filestore<Id> filestore, CreateOption option) throws SQLException {
         this.dbFactory = dbFactory;
         this.filestore = filestore;
+        setCreateOption(option);
     }
     
     @Autowired
@@ -83,8 +89,42 @@ public class SQLRepositoryService implements RepositoryService {
         this.filestore = new LocalFilesystem();
     }
     
+    @Required
     public void setFilestore(Filestore filestore) {
         this.filestore = filestore;
+    }
+    
+    /** Control what operations will be performed on the database schema on startup. 
+     * 
+     * CREATE: will try to execute table creation scripts, and also recreate
+     * any objects such as views and indexes which can be dropped and recreated
+     * without destroying data.
+     * 
+     * UPDATE: will recreate any objects such as views and indexes which can be 
+     * dropped and recreated without destroying data.
+     * 
+     * RECREATE: will delete all tables and objects and re-initialize the database.
+     * 
+     * @param option
+     * @throws SQLException 
+     */
+    public final void setCreateOption(CreateOption option) throws SQLException {
+        try (SQLAPI api = dbFactory.getSQLAPI()) {
+            switch (option) {
+                case CREATE: 
+                    api.schema.createSchema();
+                    api.schema.updateSchema();
+                    break;
+                case UPDATE:
+                    api.schema.updateSchema();
+                    break;
+                case RECREATE: 
+                    api.schema.dropSchema();
+                    api.schema.createSchema();
+                    api.schema.updateSchema();
+                    break;
+            }
+        }
     }
     
     @Override
