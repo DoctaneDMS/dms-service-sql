@@ -14,7 +14,6 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonWriter;
@@ -22,9 +21,9 @@ import javax.sql.DataSource;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 
-/**
+/** Utility to allow fluent construction of database statements and processing of result sets.
  *
- * @author jonathan
+ * @author Jonathan Essex
  */
 public abstract class FluentStatement {
     
@@ -54,6 +53,12 @@ public abstract class FluentStatement {
         }
     }
     
+    /** Get the count of open database connections which are managed via the FluentStatement API.
+     * 
+     * This will return 0 unless the logger for this class is set to DEBUG.
+     * 
+     * @return The count of currently open database connections.
+     */
     public static int getConnectionCount() {
         return connectionCount;
     }
@@ -146,6 +151,14 @@ public abstract class FluentStatement {
         } 
     }
 
+    /** Execute this statement on the given unmanaged connection.
+     * 
+     * The connection remains open after execution completes.
+     * 
+     * @param con Connection on which to execute statement.
+     * @return Update count
+     * @throws SQLException 
+     */
     public int execute(Connection con) throws SQLException {
         String sql = buildSQL();
         LOG.debug(sql);
@@ -155,6 +168,20 @@ public abstract class FluentStatement {
         }
     }
     
+    /** Execute this statement on the given unmanaged connection.
+     * 
+     * The connection remains open after execution completes. The JDBC statement
+     * object will remain open until the result stream is closed.
+     * 
+     * This form should only be used where we know that the result stream
+     * will be consumed and closed before the connection is closed.
+     * 
+     * @param <T> Type of object to create for each result row
+     * @param con Connection on which to execute the statement
+     * @param mapper Mapper converts each row of the result set into an object of type T
+     * @return A stream of result objects
+     * @throws SQLException 
+     */
     public <T> Stream<T> execute(Connection con, Mapper<T> mapper) throws SQLException {
         String sql = buildSQL();
         LOG.debug(sql);
@@ -169,6 +196,18 @@ public abstract class FluentStatement {
         return result;
     }
     
+    /** Execute this statement on a managed connection.
+     * 
+     * This method will open a database connection, execute the statement, and
+     * hold both the connection and statement open until the result stream is finally
+     * closed.
+     * 
+     * @param <T> Type of object to create for each result row
+     * @param ds DataSource on which to execute the statement
+     * @param mapper Mapper converts each row of the result set into an object of type T
+     * @return A stream of result objects
+     * @throws SQLException 
+     */
     public <T> Stream<T> execute(DataSource ds, Mapper<T> mapper) throws SQLException {
         Connection con = ds.getConnection();
         logOpen(con);
@@ -187,16 +226,79 @@ public abstract class FluentStatement {
         return result;
     }
 
+    /** Create a fluent statement from an SQL string 
+     * 
+     * @param sql SQL to execute (may include parameters ('?'))
+     * @return A fluent statement for further manipulation/execution
+     */
     public static FluentStatement of(String sql) {
         return new Base(sql);
     }
     
+    /** Set the given parameter to the given value
+     * 
+     * @param index Index of parameter to set
+     * @param value Value to which we will set the parameter
+     * @return A fluent statement for further manipulation/execution
+     */
     public FluentStatement set(int index, String value) { return new StringParam(this, index, value); }
+    
+        /** Set the given parameter to the given value
+     * 
+     * @param index Index of parameter to set
+     * @param value Value to which we will set the parameter
+     * @return A fluent statement for further manipulation/execution
+     */
     public FluentStatement set(int index, long value) { return new LongParam(this, index, value); }
+    
+    /** Set the given parameter to the given value
+     * 
+     * @param index Index of parameter to set
+     * @param value Value to which we will set the parameter
+     * @return A fluent statement for further manipulation/execution
+     */
     public FluentStatement set(int index, boolean value) { return new BooleanParam(this, index, value); }
+    
+    /** Set the given parameter to the given value
+     * 
+     * @param index Index of parameter to set
+     * @param value Value to which we will set the parameter
+     * @return A fluent statement for further manipulation/execution
+     */    
     public FluentStatement set(int index, byte[] value) { return new BinaryParam(this, index, value); }
+    
+    /** Set the given parameter to the given value
+     * 
+     * @param index Index of parameter to set
+     * @param value Value to which we will set the parameter
+     * @return A fluent statement for further manipulation/execution
+     */
     public FluentStatement set(int index, Consumer<Writer> value) { return new ClobParam(this, index, value); }
+    
+    /** Set several parameters to values supplied by a qualified name.
+     * 
+     * Will set the parameter at the index give to the value of name.part (the last part of the qualified name).
+     * Sets following parameters to successive parent parts of the qualified name.
+     * 
+     * @param index Index of parameter to set
+     * @param name Value to which we will set the parameter
+     * @return A fluent statement for further manipulation/execution
+     */
     public FluentStatement set(int index, QualifiedName name) { return name.isEmpty() ? this : set(index+1, name.parent).set(index, name.part); }
+
+    /** Set the given parameter to the given value
+     * 
+     * @param index Index of parameter to set
+     * @param id Value to which we will set the parameter
+     * @return A fluent statement for further manipulation/execution
+     */
     public FluentStatement set(int index, Id id) { return new IdParam(this, index, id); }
+
+    /** Set the given parameter to the given value
+     * 
+     * @param index Index of parameter to set
+     * @param value Value to which we will set the parameter
+     * @return A fluent statement for further manipulation/execution
+     */
     public FluentStatement set(int index, JsonObject value) { return new ClobParam(this, index, out-> { try (JsonWriter writer = Json.createWriter(out)) { writer.write(value);} }); }
 }
