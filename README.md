@@ -21,7 +21,7 @@ service module is described below:
 Firstly, we must import the database scripts needed to create and the database schema
 and the SQL statements necessary to implement common Doctane operations on the database.
 
-```    
+```xml    
     <import resource="classpath:/com/softwareplumbers/dms/service/sql/h2db.xml" />
 ```  
 
@@ -31,7 +31,7 @@ included in the xml configuration above, the SQL service module also generates c
 statements and clauses programatically. This is done in the SQLAPIFactory class, which
 is configured below:
 
-```
+```xml
     <bean id="SQLAPI" class="com.softwareplumbers.dms.service.sql.SQLAPIFactory" />
 ```
 
@@ -42,7 +42,7 @@ of SQLAPIFactory.
 
 Next we have some standard boilerplate for configuring the database connection:
 
-```
+```xml
 	<bean id="datasource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
 		<property name="driverClassName" value="org.h2.Driver" />
 		<property name="url" value="jdbc:h2:file:/var/tmp/doctane/db" />
@@ -53,7 +53,7 @@ Next we have some standard boilerplate for configuring the database connection:
 
 And configuration of the filestore:
 
-```
+```xml
     <bean id="filestore" class="com.softwareplumbers.dms.service.sql.LocalFilesystem">
         <property name="Path" value="/var/tmp/doctane/files"/> 
     </bean>
@@ -61,7 +61,7 @@ And configuration of the filestore:
 
 Then finally we can create the SQLRepositoryService bean itself:
 
-``` 
+```xml 
     <bean id="base" class="com.softwareplumbers.dms.service.sql.SQLRepositoryService" scope="singleton">
         <property name="filestore" ref="filestore"/> 
     </bean>
