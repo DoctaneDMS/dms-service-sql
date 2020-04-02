@@ -17,6 +17,7 @@
             <value>
                 DROP VIEW IF EXISTS VIEW_FOLDERS;
                 DROP VIEW IF EXISTS VIEW_LINKS;
+                DROP VIEW IF EXISTS VIEW_LINK_VERSIONS;
                 DROP VIEW IF EXISTS VIEW_DOCUMENTS;
                 DROP TABLE IF EXISTS FOLDERS;
                 DROP TABLE IF EXISTS DOCUMENTS;
@@ -84,6 +85,27 @@
                     VERSIONS
                 LEFT JOIN
                     DOCUMENTS ON (VERSIONS.ID = DOCUMENTS.LATEST_VERSION)
+                ;
+                
+                CREATE OR REPLACE VIEW VIEW_LINK_VERSIONS AS SELECT
+                    NODES.ID AS ID,
+                    NODES.PARENT_ID AS PARENT_ID,
+                    NODES.NAME AS NAME,
+                    NODES.DELETED AS DELETED,
+                    LINKS.VERSIONED AS VERSIONED,
+                    VIEW_DOCUMENTS.ID AS DOCUMENT_ID,
+                    VIEW_DOCUMENTS.VERSION_ID AS VERSION_ID,
+                    VIEW_DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
+                    VIEW_DOCUMENTS.LENGTH AS LENGTH,
+                    VIEW_DOCUMENTS.DIGEST AS DIGEST,
+                    VIEW_DOCUMENTS.CREATED AS CREATED,
+                    VIEW_DOCUMENTS.METADATA AS METADATA
+                FROM
+                    NODES 
+                INNER JOIN
+                    LINKS ON (NODES.ID = LINKS.ID)
+                INNER JOIN
+                    VIEW_DOCUMENTS ON (LINKS.DOCUMENT_ID = VIEW_DOCUMENTS.ID)
                 ;
                            
                 CREATE OR REPLACE VIEW VIEW_LINKS AS SELECT

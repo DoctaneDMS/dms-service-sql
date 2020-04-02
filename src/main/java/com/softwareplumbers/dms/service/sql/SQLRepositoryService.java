@@ -195,7 +195,7 @@ public class SQLRepositoryService implements RepositoryService {
         ) {
             Id root = Id.of(rootId);
             QualifiedName rootPath = db.getPathTo(root).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Optional<DocumentLink> current = db.getDocumentLink(root, workspacePath, Id.of(documentId), SQLAPI.GET_LINK_WITH_PATH(rootPath));
+            Optional<DocumentLink> current = db.getDocumentLink(root, workspacePath, Id.of(documentId), Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(rootPath));
             if (current.isPresent()) {
                 return LOG.exit(current.get());
             } else {
@@ -280,7 +280,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id folderId = Id.of(folder.getId());
             Id docId = Id.ofDocument(reference.id);
             Id versionId = filestore.parseKey(reference.version);
-            Optional<DocumentLink> existing = db.getDocumentLink(folderId, QualifiedName.ROOT, docId, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            Optional<DocumentLink> existing = db.getDocumentLink(folderId, QualifiedName.ROOT, docId, Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
             if (existing.isPresent()) {
                 if (Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT.isIn(options)) {
                     return existing.get();
@@ -349,7 +349,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id folderId = Id.of(folder.getId());
 
             // We need to get the existing link in order to implement custom merge behavior
-            Optional<DocumentLink> existing = db.getDocumentLink(folderId, QualifiedName.of(path.part), SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            Optional<DocumentLink> existing = db.getDocumentLink(folderId, QualifiedName.of(path.part), Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
             if (existing.isPresent()) {
                 DocumentLink existingDoc = existing.get();
                 mediaType = mediaType == Constants.NO_TYPE ? existingDoc.getMediaType() : mediaType;
@@ -629,7 +629,7 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            DocumentLink link = db.getDocumentLink(Id.of(rootId), path, SQLAPI.GET_LINK_WITH_PATH(path.parent))
+            DocumentLink link = db.getDocumentLink(Id.of(rootId), path, Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(path.parent))
                 .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
             return LOG.exit(filestore.get(filestore.parseKey(link.getVersion())));
         } catch (SQLException e) {
@@ -643,7 +643,7 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            DocumentLink link = db.getDocumentLink(Id.of(rootId), path, SQLAPI.GET_LINK_WITH_PATH(path.parent))
+            DocumentLink link = db.getDocumentLink(Id.of(rootId), path, Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(path.parent))
                 .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
             OutputStreamConsumer.of(()->filestore.get(filestore.parseKey(link.getVersion()))).consume(out);
             LOG.exit();
@@ -666,7 +666,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id id = Id.of(rootId);
             QualifiedName baseName = db.getPathTo(id)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            DocumentLink link = db.getDocumentLink(id, path, SQLAPI.GET_LINK_WITH_PATH(baseName))
+            DocumentLink link = db.getDocumentLink(id, path, Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(baseName))
                 .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
             return LOG.exit(link);
         } catch (SQLException e) {
@@ -785,7 +785,7 @@ public class SQLRepositoryService implements RepositoryService {
                     return LOG.exit(db.getFolder(info.parent_id, QualifiedName.of(info.name), rs->SQLAPI.getWorkspace(rs, baseName))
                         .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path)));
                 case DOCUMENT_LINK:
-                    return LOG.exit(db.getDocumentLink(info.parent_id, QualifiedName.of(info.name), SQLAPI.GET_LINK_WITH_PATH(baseName))
+                    return LOG.exit(db.getDocumentLink(info.parent_id, QualifiedName.of(info.name), Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(baseName))
                         .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path)));
                 default:
                     throw LOG.throwing(new RuntimeException("Don't know how to get " + info.type));

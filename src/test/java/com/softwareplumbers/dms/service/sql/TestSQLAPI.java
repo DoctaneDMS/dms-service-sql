@@ -5,29 +5,21 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
-import com.softwareplumbers.dms.service.sql.Id;
-import com.softwareplumbers.dms.service.sql.SQLAPIFactory;
-import com.softwareplumbers.dms.service.sql.Schema;
-import com.softwareplumbers.dms.service.sql.SQLAPI;
+
 import com.softwareplumbers.common.QualifiedName;
-import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
-import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.Workspace;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.Optional;
 import javax.json.Json;
 import javax.json.JsonValue;
-import org.junit.After;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -59,17 +51,17 @@ public class TestSQLAPI {
     @Test 
     public void testGetDocumentLinkSQL() throws SQLException {
         try (SQLAPI api = factory.getSQLAPI()) {
-            String l0 = api.getDocumentLinkSQL(1);
+            String l0 = api.getDocumentLinkSQL(1, Optional.empty());
             System.out.println(l0);
             assertTrue(l0.contains("T0.NAME AS PATH"));
             assertTrue(l0.contains("VIEW_LINKS T0"));
             assertTrue(l0.contains("WHERE T0.NAME=? AND T0.PARENT_ID=?"));
-            String l1 = api.getDocumentLinkSQL(2);
+            String l1 = api.getDocumentLinkSQL(2, Optional.empty());
             System.out.println(l1);
             assertTrue(l1.contains("T1.NAME || '/' || T0.NAME AS PATH"));
             assertTrue(l1.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
             assertTrue(l1.contains("WHERE T0.NAME=? AND T1.NAME=? AND T1.PARENT_ID=?"));
-            String l2 = api.getDocumentLinkSQL(3);
+            String l2 = api.getDocumentLinkSQL(3, Optional.empty());
             System.out.println(l2);
             assertTrue(l2.contains("T2.NAME || '/' || T1.NAME || '/' || T0.NAME AS PATH"));
             assertTrue(l2.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID INNER JOIN VIEW_FOLDERS T2 ON T1.PARENT_ID = T2.ID"));
@@ -77,15 +69,36 @@ public class TestSQLAPI {
         }
     }
     
-        @Test 
+    @Test 
+    public void testGetDocumentLinkSQLWithVersion() throws SQLException {
+        try (SQLAPI api = factory.getSQLAPI()) {
+            String l0 = api.getDocumentLinkSQL(1, Optional.of("v1"));
+            System.out.println(l0);
+            assertTrue(l0.contains("T0.NAME AS PATH"));
+            assertTrue(l0.contains("VIEW_LINK_VERSIONS T0"));
+            assertTrue(l0.contains("WHERE T0.NAME=? AND T0.PARENT_ID=? AND T0.VERSION_ID=?"));
+            String l1 = api.getDocumentLinkSQL(2, Optional.of("v1"));
+            System.out.println(l1);
+            assertTrue(l1.contains("T1.NAME || '/' || T0.NAME AS PATH"));
+            assertTrue(l1.contains("VIEW_LINK_VERSIONS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
+            assertTrue(l1.contains("WHERE T0.NAME=? AND T1.NAME=? AND T1.PARENT_ID=? AND T0.VERSION_ID=?"));
+            String l2 = api.getDocumentLinkSQL(3, Optional.of("v1"));
+            System.out.println(l2);
+            assertTrue(l2.contains("T2.NAME || '/' || T1.NAME || '/' || T0.NAME AS PATH"));
+            assertTrue(l2.contains("VIEW_LINK_VERSIONS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID INNER JOIN VIEW_FOLDERS T2 ON T1.PARENT_ID = T2.ID"));
+            assertTrue(l2.contains("WHERE T0.NAME=? AND T1.NAME=? AND T2.NAME=? AND T2.PARENT_ID=? AND T0.VERSION_ID=?"));
+        }
+    }
+    
+    @Test 
     public void testGetDocumentLinkByIdSQL() throws SQLException {
         try (SQLAPI api = factory.getSQLAPI()) {
-            String l0 = api.getDocumentLinkByIdSQL(0);
+            String l0 = api.getDocumentLinkByIdSQL(0, Optional.empty());
             System.out.println(l0);
             assertTrue(l0.contains("T0.NAME AS PATH"));
             assertTrue(l0.contains("VIEW_LINKS T0"));
             assertTrue(l0.contains("WHERE T0.DOCUMENT_ID=? AND T0.PARENT_ID=?"));
-            String l1 = api.getDocumentLinkByIdSQL(1);
+            String l1 = api.getDocumentLinkByIdSQL(1, Optional.empty());
             System.out.println(l1);
             assertTrue(l1.contains("T1.NAME || '/' || T0.NAME AS PATH"));
             assertTrue(l1.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
@@ -227,7 +240,7 @@ public class TestSQLAPI {
             api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(folder_id, "docname", id, version, SQLAPI.GET_ID);
             api.commit();
-            Optional<DocumentLink> result = api.getDocumentLink(folder_id, QualifiedName.of("docname"), SQLAPI.GET_LINK_WITH_PATH(QualifiedName.of("foldername")));
+            Optional<DocumentLink> result = api.getDocumentLink(folder_id, QualifiedName.of("docname"), Optional.empty(), SQLAPI.GET_LINK_WITH_PATH(QualifiedName.of("foldername")));
             assertTrue(result.isPresent());
             assertEquals(QualifiedName.of("foldername","docname"), result.get().getName());
             assertEquals(id.toString(), result.get().getId());
@@ -248,7 +261,7 @@ public class TestSQLAPI {
             api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(folder_id, "docname", id, version, SQLAPI.GET_ID);
             api.commit();
-            Optional<DocumentLink> result = api.getDocumentLink(Id.ROOT_ID, QualifiedName.of("foldername","docname"), SQLAPI.GET_LINK_WITH_PATH(QualifiedName.ROOT));
+            Optional<DocumentLink> result = api.getDocumentLink(Id.ROOT_ID, QualifiedName.of("foldername","docname"), Optional.empty(), SQLAPI.GET_LINK_WITH_PATH(QualifiedName.ROOT));
             assertTrue(result.isPresent());
             assertEquals(QualifiedName.of("foldername","docname"), result.get().getName());
             assertEquals(id.toString(), result.get().getId());

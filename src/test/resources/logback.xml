@@ -14,7 +14,7 @@
     <logger name="com.softwareplumbers.dms.rest.server" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.rest.server.model" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.rest.server.filenet" level="TRACE"/>
-    <logger name="com.softwareplumbers.dms.rest.server.sql" level="TRACE"/>
+    <logger name="com.softwareplumbers.dms.service.sql" level="TRACE"/>
     <logger name="com.softwareplumbers.keymanager" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.plugin.auth.ti" level="TRACE"/>
     <logger name="com.softwareplumbers.dms.rest.server.core.DummyRequestValidationService" level="INFO"/>

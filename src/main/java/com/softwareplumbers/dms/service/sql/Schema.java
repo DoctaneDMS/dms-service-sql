@@ -118,6 +118,12 @@ public class Schema {
         return LINK_NAME_MAP.get(qname);
     }
     
+    private static final String mapLinkVersionName(QualifiedName qname) {
+        if (qname.isEmpty()) return "VIEW_LINK_VERSIONS";
+        if (qname.get(0).equals("parent")) return mapFolderName(qname.rightFromStart(1));
+        return LINK_NAME_MAP.get(qname);
+    }
+    
     private static final String mapFolderName(QualifiedName qname) {
         if (qname.isEmpty()) return "VIEW_FOLDERS";
         if (qname.get(0).equals("parent")) return mapFolderName(qname.rightFromStart(1));
@@ -147,6 +153,7 @@ public class Schema {
     }
     
     private static final Formatter<String> LINK_FORMATTER = Visitors.SQL(Schema::mapLinkName, Schema::getRelationship);
+    private static final Formatter<String> LINK_VERSION_FORMATTER = Visitors.SQL(Schema::mapLinkVersionName, Schema::getRelationship);
     private static final Formatter<String> FOLDER_FORMATTER = Visitors.SQL(Schema::mapFolderName, Schema::getRelationship);
     private static final Formatter<String> NODE_FORMATTER = Visitors.SQL(Schema::mapNodeName, Schema::getRelationship);
     private static final Formatter<String> DOCUMENT_FORMATTER = Visitors.SQL(Schema::mapDocumentName, name->null);
@@ -206,8 +213,8 @@ public class Schema {
         return DOCUMENT_FIELDS;
     }
     
-    public Formatter<String> getLinkFormatter() {
-        return LINK_FORMATTER;
+    public Formatter<String> getLinkFormatter(boolean withVersions) {
+        return withVersions ? LINK_VERSION_FORMATTER : LINK_FORMATTER;
     }
     
     public Formatter<String> getFolderFormatter() {

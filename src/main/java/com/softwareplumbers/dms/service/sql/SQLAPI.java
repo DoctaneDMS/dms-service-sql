@@ -226,8 +226,12 @@ public class SQLAPI implements AutoCloseable {
         return Templates.substitute(templates.fetchInfo, getNameExpression(depth), getParameterizedNameQuery(depth).toExpression(schema.getNodeFormatter()));
     }
     
-    String getDocumentLinkSQL(int depth) {
-        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(depth), getParameterizedNameQuery(depth).toExpression(schema.getLinkFormatter()));
+    String getDocumentLinkSQL(int depth, Optional<String> version) {
+        Query query = getParameterizedNameQuery(depth);
+        if (version.isPresent()) {
+            query = query.intersect(Query.from("version", Range.equals(Param.from(Integer.toString(depth+1)))));
+        }
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(depth), query.toExpression(schema.getLinkFormatter(version.isPresent())));
     }
     
     String getDocumentSearchSQL(Query query, boolean searchHistory) {
@@ -254,21 +258,21 @@ public class SQLAPI implements AutoCloseable {
     
     String searchDocumentLinkSQL(Id rootId, QualifiedName nameWithPatterns, Query filter) {
         filter = getDBFilterExpression(schema.getLinkFields(), filter).intersect(getNameQuery(rootId, nameWithPatterns));
-        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getLinkFormatter()));
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getLinkFormatter(false)));
     }
     
     String searchDocumentLinkSQL(Id rootId, QualifiedName nameWithPatterns, Id docId, Query filter) {
         Query nameQuery = Query.from("parent", getNameQuery(rootId, nameWithPatterns))
             .intersect(Query.from("id", Range.equals(Json.createValue(docId.toString()))));
         filter = getDBFilterExpression(schema.getLinkFields(), filter).intersect(nameQuery);
-        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()+1), filter.toExpression(schema.getLinkFormatter()));
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()+1), filter.toExpression(schema.getLinkFormatter(false)));
     }
     
     String searchDocumentLinkSQL(QualifiedName nameWithPatterns, Id docId, Query filter) {
         Query nameQuery = Query.from("parent", getNameQuery(nameWithPatterns))
             .intersect(Query.from("id", Range.equals(Json.createValue(docId.toString()))));
         filter = getDBFilterExpression(schema.getLinkFields(), filter).intersect(nameQuery);
-        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getLinkFormatter()));
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getLinkFormatter(false)));
     }
 
     String getFolderSQL(int depth) {
@@ -280,14 +284,17 @@ public class SQLAPI implements AutoCloseable {
         return Templates.substitute(templates.fetchFolder, getNameExpression(nameWithPatterns.size()), filter.toExpression(schema.getFolderFormatter()));
     }
 
-    String getDocumentLinkByIdSQL(int depth) {
+    String getDocumentLinkByIdSQL(int depth, Optional<String> version) {
         Query query;
         if (depth == 0) 
             query = Query.from("parentId", Range.equals(Param.from("0"))).intersect(Query.from("id", Range.equals(Param.from("1"))));
         else 
             query = Query.from("parent", getParameterizedNameQuery(depth)).intersect(Query.from("id", Range.equals(Param.from(Integer.toString(depth)))));
+        if (version.isPresent()) {
+            query = query.intersect(Query.from("version", Range.equals(Param.from(Integer.toString(depth+1)))));
+        }
             
-        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(depth+1), query.toExpression(schema.getLinkFormatter()));
+        return Templates.substitute(templates.fetchDocumentLink, getNameExpression(depth+1), query.toExpression(schema.getLinkFormatter(version.isPresent())));
     }
 
     public Optional<QualifiedName> getPathTo(Id id) throws SQLException {
@@ -552,7 +559,7 @@ public class SQLAPI implements AutoCloseable {
     
     public <T> T copyDocumentLink(Id sourceId, QualifiedName sourcePath, Id targetId, QualifiedName targetPath, boolean optCreate, Mapper<T> mapper) throws SQLException, InvalidObjectName, InvalidWorkspace {
         LOG.entry(sourceId, sourcePath, targetId, targetPath, optCreate, mapper);
-        Id idSrc = getDocumentLink(sourceId, sourcePath, GET_ID).orElseThrow(()->new InvalidObjectName(sourceId.toString(), sourcePath));
+        Id idSrc = getDocumentLink(sourceId, sourcePath, Optional.empty(), GET_ID).orElseThrow(()->new InvalidObjectName(sourceId.toString(), sourcePath));
         Id folderId = targetPath.parent.isEmpty() 
             ? targetId
             : getOrCreateFolder(targetId, targetPath.parent, optCreate, GET_ID)
@@ -569,7 +576,7 @@ public class SQLAPI implements AutoCloseable {
             .set(2, idSrc)
             .execute(con);
         
-        try (Stream<T> results = LOG.exit(FluentStatement.of(getDocumentLinkSQL(1))
+        try (Stream<T> results = LOG.exit(FluentStatement.of(getDocumentLinkSQL(1, Optional.empty()))
             .set(1, targetPath.part)
             .set(2, folderId)
             .execute(con, mapper))) {       
@@ -596,7 +603,7 @@ public class SQLAPI implements AutoCloseable {
             .set(4, false)
             .execute(con);
         
-        try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(1))
+        try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(1, Optional.empty()))
             .set(1, name)
             .set(2, folderId)
             .execute(con, mapper)) { 
@@ -615,7 +622,7 @@ public class SQLAPI implements AutoCloseable {
                 .set(2, version)
                 .set(3, info.get().id)
                 .execute(con);
-            try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(1))
+            try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(1, Optional.empty()))
                 .set(1, name)
                 .set(2, folderId)
                 .execute(con, mapper)
@@ -661,25 +668,27 @@ public class SQLAPI implements AutoCloseable {
             .execute(con);
     }
 
-    public <T> Optional<T> getDocumentLink(Id rootId, QualifiedName workspacePath, Id documentId, Mapper<T> mapper) throws SQLException {
+    public <T> Optional<T> getDocumentLink(Id rootId, QualifiedName workspacePath, Id documentId, Optional<String> version, Mapper<T> mapper) throws SQLException {
         LOG.entry(rootId, workspacePath, documentId, mapper);
         try (Stream<T> result = FluentStatement
-            .of(getDocumentLinkByIdSQL(workspacePath.size()))
+            .of(getDocumentLinkByIdSQL(workspacePath.size(), version))
             .set(1, documentId)
             .set(2, workspacePath)
             .set(workspacePath.size()+2, rootId)
+            .set(workspacePath.size()+3, version)
             .execute(con, mapper)
         ) { 
             return LOG.exit(result.findFirst());
         }
     }
     
-    public <T> Optional<T> getDocumentLink(Id rootId, QualifiedName path, Mapper<T> mapper) throws SQLException {
+    public <T> Optional<T> getDocumentLink(Id rootId, QualifiedName path, Optional<String> version, Mapper<T> mapper) throws SQLException {
         LOG.entry(rootId, path, mapper);
         try (Stream<T> result = FluentStatement
-            .of(getDocumentLinkSQL(path.size()))
+            .of(getDocumentLinkSQL(path.size(), version))
             .set(1, path)
             .set(path.size()+1, rootId)
+            .set(path.size()+2, version)
             .execute(con, mapper)
         ) {
             return LOG.exit(result.findFirst());

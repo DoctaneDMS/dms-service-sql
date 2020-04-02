@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.json.Json;
@@ -301,4 +302,25 @@ public abstract class FluentStatement {
      * @return A fluent statement for further manipulation/execution
      */
     public FluentStatement set(int index, JsonObject value) { return new ClobParam(this, index, out-> { try (JsonWriter writer = Json.createWriter(out)) { writer.write(value);} }); }
+
+    /** Set optional parameter value
+     * 
+     * @param <T> Type of value to set
+     * @param index Index of parameter to set
+     * @param optValue Value to set
+     * @return  A fluent statement for further manipulation/execution
+     */
+    public <T> FluentStatement set(int index, Optional<T> optValue) {
+        if (optValue.isPresent()) {
+            T value = optValue.get();
+            if (value instanceof String) return set(index, (String)value);
+            if (value instanceof Id) return set(index, (Id)value);
+            if (value instanceof QualifiedName) return set(index, (QualifiedName)value);
+            if (value instanceof byte[]) return set(index, (byte[])value);
+            if (value instanceof Boolean) return set(index, (Boolean)value);
+            if (value instanceof Long) return set(index, (Long)value);
+            throw new RuntimeException("unsupported optional type: " + value.getClass());
+        }
+        return this;
+    }
 }
