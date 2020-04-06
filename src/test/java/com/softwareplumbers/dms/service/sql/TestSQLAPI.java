@@ -6,7 +6,7 @@
 package com.softwareplumbers.dms.service.sql;
 
 
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;

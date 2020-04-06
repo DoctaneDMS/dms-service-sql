@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.visitor.Formatter;
 import com.softwareplumbers.common.abstractquery.visitor.Visitors;
 import com.softwareplumbers.common.abstractquery.visitor.Visitors.SQLFormat.Relationship;

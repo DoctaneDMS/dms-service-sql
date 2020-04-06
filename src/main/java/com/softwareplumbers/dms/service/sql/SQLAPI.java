@@ -5,7 +5,7 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
-import com.softwareplumbers.common.QualifiedName;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.Param;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
@@ -95,7 +95,7 @@ public class SQLAPI implements AutoCloseable {
         long length = results.getLong("LENGTH");
         byte[] hash = results.getBytes("DIGEST");
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
-        QualifiedName name = basePath.addParsed(results.getString("PATH"),"/");
+        QualifiedName name = basePath.addParsed(Function.identity(), results.getString("PATH"),"/");
         return new DocumentLinkImpl(name, new Reference(id.toString(),version), mediaType, length, hash, metadata, false, LocalData.NONE);
     }
     
@@ -138,7 +138,7 @@ public class SQLAPI implements AutoCloseable {
         Id id = new Id(results.getBytes("ID"));
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
         Workspace.State state = Workspace.State.valueOf(results.getString("STATE"));
-        QualifiedName path = basePath.addParsed(results.getString("PATH"),"/");
+        QualifiedName path = basePath.addParsed(Function.identity(), results.getString("PATH"),"/");
         return new WorkspaceImpl(path, id.toString(), state, metadata, false, LocalData.NONE);
     }
     
