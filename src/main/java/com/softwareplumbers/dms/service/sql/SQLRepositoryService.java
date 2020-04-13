@@ -21,6 +21,8 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Workspace;
+import com.softwareplumbers.dms.common.impl.DocumentImpl;
+import com.softwareplumbers.dms.common.impl.LocalData;
 import com.softwareplumbers.dms.common.impl.StreamInfo;
 import com.softwareplumbers.dms.service.sql.Filestore.NotFound;
 import com.softwareplumbers.dms.service.sql.SQLAPI.Timestamped;
@@ -136,7 +138,8 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = dbFactory.getSQLAPI();
         ) {
             StreamInfo info = StreamInfo.of(iss);
-            filestore.put(version, info.supplier);
+            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+            filestore.put(version, document, info);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
             db.commit();
             return new Reference(id.toString(), version.toString());
@@ -167,9 +170,9 @@ public class SQLRepositoryService implements RepositoryService {
                     StreamInfo info = StreamInfo.of(iss);
                     length = info.length;
                     digest = info.digest;
-                    filestore.put(version, info.supplier);
+                    filestore.put(version, existingDoc.setMetadata(metadata), info);
                 } else {
-                    filestore.link(replacing, version);
+                    filestore.link(existingDoc.setMetadata(metadata), replacing, version);
                 }
                 Id docId = new Id(id);
                 db.createVersion(docId, version, mediaType, length, digest, metadata);
@@ -224,7 +227,10 @@ public class SQLRepositoryService implements RepositoryService {
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             StreamInfo info = StreamInfo.of(iss);
-            filestore.put(version, info.supplier);
+            
+            
+            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+            filestore.put(version, document, info);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
             DocumentLink result = db.createDocumentLink(Id.of(folder.getId()), path.part, id, version, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
             db.commit();
@@ -361,9 +367,9 @@ public class SQLRepositoryService implements RepositoryService {
                     StreamInfo info = StreamInfo.of(iss);
                     length = info.length;
                     digest = info.digest;
-                    filestore.put(version, info.supplier);
+                    filestore.put(version, existingDoc.setMetadata(metadata), info);
                 } else {
-                    filestore.link(Id.ofDocument(replacing.version), version);
+                    filestore.link(existingDoc.setMetadata(metadata), Id.ofDocument(replacing.version), version);
                 }                
                 
                 Id replacingId = Id.ofDocument(replacing.id);
@@ -375,7 +381,8 @@ public class SQLRepositoryService implements RepositoryService {
                 if (Options.CREATE_MISSING_ITEM.isIn(options)) {
                     Id docId = new Id();
                     StreamInfo info = StreamInfo.of(iss);
-                    filestore.put(version, info.supplier);
+                    Document document = new DocumentImpl(new Reference(docId.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+                    filestore.put(version, document, info);
                     db.createDocument(docId, version, mediaType, info.length, info.digest, metadata);
                     return db.createDocumentLink(folderId, path.part, docId, version, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
                 } else {

@@ -6,6 +6,8 @@
 package com.softwareplumbers.dms.service.sql;
 
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
+import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.common.impl.StreamInfo;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -64,21 +66,23 @@ public interface Filestore<K> {
     
     /** Associate binary data with some key value.
      * 
-     * @param key
-     * @param data 
+     * @param key Key under which to store the document data
+     * @param document Information about document including media type and metadata
+     * @param info Stream info including message digest 
      */
-    void put(K key, InputStreamSupplier data);
+    void put(K key, Document document, StreamInfo iss);
     
     /** Link previously stored binary data with a new key value.
      * 
      * The old key value remains associated with the binary data after this
      * operation completes; get(from) is still valid.  
      * 
+     * @param Document new information about the document; link may have different metadata the original file
      * @param from Old key value with previously stored data
      * @param to New key value to associate with the same stored data
      * @throws NotFound if from does not have any associated data.
      */
-    void link(K from, K to) throws NotFound;
+    void link(Document document, K from, K to) throws NotFound;
     
     /** Remove the association between a key and its data
      * 

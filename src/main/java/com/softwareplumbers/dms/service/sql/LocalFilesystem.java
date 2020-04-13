@@ -5,14 +5,14 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
-import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
+import com.softwareplumbers.dms.Document;
+import com.softwareplumbers.dms.common.impl.StreamInfo;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.UUID;
 
 /**
  *
@@ -62,9 +62,9 @@ public class LocalFilesystem implements Filestore<Id> {
     }
 
     @Override
-    public void put(Id version, InputStreamSupplier iss) {
+    public void put(Id version, Document document, StreamInfo iss) {
         Path path = toPath(version);
-        try (InputStream is = iss.get()) {
+        try (InputStream is = iss.supplier.get()) {
             Files.createDirectories(path.getParent());
             Files.copy(is, path);
         } catch (IOException e) {
@@ -73,7 +73,7 @@ public class LocalFilesystem implements Filestore<Id> {
     }
 
     @Override
-    public void link(Id from, Id to) throws NotFound {
+    public void link(Document document, Id from, Id to) throws NotFound {
         Path toPath = toPath(to);
         try {
             Files.createDirectories(toPath.getParent());
