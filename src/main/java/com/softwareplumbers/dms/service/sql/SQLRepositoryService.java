@@ -5,9 +5,9 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractpattern.parsers.Parsers;
 import com.softwareplumbers.common.abstractquery.Query;
+import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
 import com.softwareplumbers.common.pipedstream.OutputStreamConsumer;
 import com.softwareplumbers.dms.Constants;
@@ -19,11 +19,15 @@ import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.Options;
 import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.RepositoryPath;
+import com.softwareplumbers.dms.RepositoryPath.ElementType;
+import com.softwareplumbers.dms.RepositoryPath.VersionedElement;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.common.impl.DocumentImpl;
 import com.softwareplumbers.dms.common.impl.LocalData;
 import com.softwareplumbers.dms.common.impl.StreamInfo;
+import com.softwareplumbers.dms.common.impl.WorkspaceImpl;
 import com.softwareplumbers.dms.service.sql.Filestore.NotFound;
 import com.softwareplumbers.dms.service.sql.SQLAPI.Timestamped;
 import java.io.IOException;
@@ -49,7 +53,7 @@ import org.springframework.beans.factory.annotation.Required;
  * @author Jonathan Essex
  */
 public class SQLRepositoryService implements RepositoryService {
-    
+
     /** Options controlling DDL run on startup */
     public static enum CreateOption {
         /** Run the create and update scripts */ CREATE,
@@ -75,8 +79,8 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
 
-    private Supplier<Exceptions.InvalidWorkspace> doThrowInvalidWorkspace(String id, QualifiedName path) {
-        return ()->LOG.throwing(new Exceptions.InvalidWorkspace(id, path));
+    private Supplier<Exceptions.InvalidWorkspace> doThrowInvalidWorkspace(RepositoryPath path) {
+        return ()->LOG.throwing(new Exceptions.InvalidWorkspace(path));
     }
        
     public SQLRepositoryService(SQLAPIFactory dbFactory, Filestore<Id> filestore, CreateOption option) throws SQLException {
@@ -164,7 +168,7 @@ public class SQLRepositoryService implements RepositoryService {
                 mediaType = mediaType == Constants.NO_TYPE ? existingDoc.getMediaType() : mediaType;
                 long length = existingDoc.getLength();
                 byte[] digest = existingDoc.getDigest();
-                Id replacing = new Id(existingDoc.getVersion());
+                Id replacing = new Id(existingDoc.getReference().version);
                 metadata = RepositoryObject.mergeMetadata(existingDoc.getMetadata(), metadata);
                 if (iss != null) {
                     StreamInfo info = StreamInfo.of(iss);
@@ -191,19 +195,17 @@ public class SQLRepositoryService implements RepositoryService {
     
 
     @Override
-    public DocumentLink getDocumentLink(String rootId, QualifiedName workspacePath, String documentId, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidDocumentId {
-        LOG.entry(rootId, workspacePath, documentId, Options.loggable(options));
+    public DocumentLink getDocumentLink(RepositoryPath workspacePath, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(workspacePath, Options.loggable(options));
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Id root = Id.of(rootId);
-            QualifiedName rootPath = db.getPathTo(root).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Optional<DocumentLink> current = db.getDocumentLink(root, workspacePath, Id.of(documentId), Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(rootPath));
+            Optional<DocumentLink> current = db.getDocumentLink(workspacePath, SQLAPI.GET_LINK);
             if (current.isPresent()) {
                 return LOG.exit(current.get());
             } else {
                 // TODO: check if workspace path is valid and return appropriate exception
-                throw LOG.throwing(new Exceptions.InvalidDocumentId(documentId));
+                throw LOG.throwing(new Exceptions.InvalidObjectName(workspacePath));
             }
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -211,8 +213,8 @@ public class SQLRepositoryService implements RepositoryService {
     }        
 
     @Override
-    public DocumentLink createDocumentLink(String rootId, QualifiedName path, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
-        LOG.entry(rootId, path, mediaType, iss, metadata, Options.loggable(options));
+    public DocumentLink createDocumentLink(RepositoryPath path, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        LOG.entry(path, mediaType, iss, metadata, Options.loggable(options));
         Id version = filestore.generateKey();
         Id id = new Id();
         Reference reference = new Reference(id.toString(), version.toString());
@@ -221,18 +223,21 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Id idRoot = Id.of(rootId);
-            Workspace folder = db.getOrCreateFolder(idRoot, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(doThrowInvalidWorkspace(rootId, path.parent));
+            Workspace folder = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_WORKSPACE)
+                .orElseThrow(doThrowInvalidWorkspace(path.parent));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
+            if (path.part.type != ElementType.DOCUMENT_PATH)
+                throw LOG.throwing(new Exceptions.InvalidObjectName(path));
+            VersionedElement linkPart = (VersionedElement)path.part;
             StreamInfo info = StreamInfo.of(iss);
             
             
             Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
             filestore.put(version, document, info);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
-            DocumentLink result = db.createDocumentLink(Id.of(folder.getId()), path.part, id, version, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            
+            DocumentLink result = db.createDocumentLink(Id.of(folder.getId()), linkPart.name, Id.ofDocument(document.getReference().id), Id.ofVersion(document.getReference().version), SQLAPI.GET_LINK);
             db.commit();
             return result;
         } catch (SQLException e) {
@@ -244,7 +249,7 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public DocumentLink createDocumentLinkAndName(String rootId, QualifiedName workspaceName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
+    public DocumentLink createDocumentLinkAndName(RepositoryPath workspaceName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
         
         Id version = filestore.generateKey();
         Id id = new Id();
@@ -253,15 +258,15 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
-            Workspace folder = db.getOrCreateFolder(Id.of(rootId), workspaceName, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
+            Workspace folder = db.getOrCreateFolder(workspaceName, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_WORKSPACE)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(workspaceName));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
             String name = db.generateUniqueName(folderId, baseName);
             StreamInfo info = StreamInfo.of(iss);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
-            DocumentLink result = db.createDocumentLink(folderId, name, id, version, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            DocumentLink result = db.createDocumentLink(folderId, name, id, version, SQLAPI.GET_LINK);
             db.commit();
             return result;        
         
@@ -274,19 +279,16 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public DocumentLink createDocumentLinkAndName(String rootId, QualifiedName workspaceName, Reference reference, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
+    public DocumentLink createDocumentLinkAndName(RepositoryPath workspaceName, Reference reference, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
-            Id root = Id.of(rootId);
-            Workspace folder = db.getOrCreateFolder(Id.of(rootId), workspaceName, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspaceName));
+            Workspace folder = db.getOrCreateFolder(workspaceName, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_WORKSPACE)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(workspaceName));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
-            Id folderId = Id.of(folder.getId());
-            Id docId = Id.ofDocument(reference.id);
-            Id versionId = filestore.parseKey(reference.version);
-            Optional<DocumentLink> existing = db.getDocumentLink(folderId, QualifiedName.ROOT, docId, Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            RepositoryPath existingName = workspaceName.addDocumentId(reference.getId(), null);
+            Optional<DocumentLink> existing = db.getDocumentLink(existingName, SQLAPI.GET_LINK);
             if (existing.isPresent()) {
                 if (Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT.isIn(options)) {
                     return existing.get();
@@ -294,9 +296,12 @@ public class SQLRepositoryService implements RepositoryService {
                     throw LOG.throwing(new Exceptions.InvalidReference(reference));
                 }
             }
+            Id docId = Id.ofDocument(reference.id);
+            Id versionId = Id.ofVersion(reference.version);
+            Id folderId = Id.of(folder.getId());
             Document document = db.getDocument(docId, versionId, SQLAPI.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
             String name = db.generateUniqueName(folderId, getBaseName(document.getMetadata()));
-            DocumentLink result = db.createDocumentLink(folderId, name, docId, versionId, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            DocumentLink result = db.createDocumentLink(folderId, name, docId, versionId, SQLAPI.GET_LINK);
             db.commit();               
             return result;
         } catch (SQLException e) {
@@ -305,20 +310,20 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public DocumentLink createDocumentLink(String rootId, QualifiedName path, Reference reference, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidReference, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+    public DocumentLink createDocumentLink(RepositoryPath path, Reference reference, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidReference, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
-            Id root = Id.of(rootId);
-            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path.parent, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(doThrowInvalidWorkspace(rootId, path.parent));
+            Workspace folder = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_WORKSPACE)
+                .orElseThrow(doThrowInvalidWorkspace(path.parent));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
             Id docId = Id.ofDocument(reference.id);
             Id versionId = filestore.parseKey(reference.version);
             //Document document = db.getDocument(docId, versionId, SQLAPI.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            DocumentLink result = db.createDocumentLink(folderId, path.part, docId, versionId,SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            VersionedElement namePart = (VersionedElement)path.part;
+            DocumentLink result = db.createDocumentLink(folderId, namePart.name, docId, versionId, SQLAPI.GET_LINK);
             db.commit();
             return result;
         } catch (SQLException e) {
@@ -340,22 +345,23 @@ public class SQLRepositoryService implements RepositoryService {
      * @throws com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState 
      */
     @Override
-    public DocumentLink updateDocumentLink(String rootId, QualifiedName path, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+    public DocumentLink updateDocumentLink(RepositoryPath path, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         
         Id version = filestore.generateKey();
 
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
-            Id root = Id.of(rootId);
-            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path.parent, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            Workspace folder = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_WORKSPACE)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(path.parent));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
 
             // We need to get the existing link in order to implement custom merge behavior
-            Optional<DocumentLink> existing = db.getDocumentLink(folderId, QualifiedName.of(path.part), Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            RepositoryPath shortPath = RepositoryPath.ROOT.addId(folder.getId()).add(path.part);
+            VersionedElement part = (VersionedElement)path.part;
+            Optional<DocumentLink> existing = db.getDocumentLink(shortPath, SQLAPI.GET_LINK);
             if (existing.isPresent()) {
                 DocumentLink existingDoc = existing.get();
                 mediaType = mediaType == Constants.NO_TYPE ? existingDoc.getMediaType() : mediaType;
@@ -374,7 +380,7 @@ public class SQLRepositoryService implements RepositoryService {
                 
                 Id replacingId = Id.ofDocument(replacing.id);
                 db.createVersion(replacingId, version, mediaType, length, digest, metadata);
-                DocumentLink result = db.updateDocumentLink(folderId, path.part, replacingId, version, SQLAPI.GET_LINK_WITH_PATH(folder.getName())).get();
+                DocumentLink result = db.updateDocumentLink(folderId, part.name, replacingId, version, SQLAPI.GET_LINK).get();
                 db.commit();           
                 return result;
             } else {
@@ -384,9 +390,9 @@ public class SQLRepositoryService implements RepositoryService {
                     Document document = new DocumentImpl(new Reference(docId.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
                     filestore.put(version, document, info);
                     db.createDocument(docId, version, mediaType, info.length, info.digest, metadata);
-                    return db.createDocumentLink(folderId, path.part, docId, version, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+                    return db.createDocumentLink(folderId, part.name, docId, version, SQLAPI.GET_LINK);
                 } else {
-                    throw new Exceptions.InvalidObjectName(rootId, path);
+                    throw new Exceptions.InvalidObjectName(path);
                 }
             }
         } catch (SQLException e) {
@@ -397,26 +403,26 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public DocumentLink updateDocumentLink(String rootId, QualifiedName path, Reference reference, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
+    public DocumentLink updateDocumentLink(RepositoryPath path, Reference reference, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
-            Id root = Id.of(rootId);
             Id docId = Id.ofDocument(reference.id);
             Id versionId = filestore.parseKey(reference.version);
-            Workspace folder = db.getOrCreateFolder(Id.of(rootId), path.parent, Options.CREATE_MISSING_PARENT.isIn(options), db::getWorkspace)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
+            VersionedElement part = (VersionedElement)path.part;
+            Workspace folder = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_WORKSPACE)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(path.parent));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
             Document document = db.getDocument(docId, versionId, SQLAPI.GET_DOCUMENT)
                 .orElseThrow(()->new Exceptions.InvalidReference(reference));            
-            Optional<DocumentLink> result = db.updateDocumentLink(folderId, path.part, docId, versionId, SQLAPI.GET_LINK_WITH_PATH(folder.getName()));
+            Optional<DocumentLink> result = db.updateDocumentLink(folderId, part.name, docId, versionId, SQLAPI.GET_LINK);
             if (!result.isPresent() && Options.CREATE_MISSING_ITEM.isIn(options)) {
-                result = Optional.of(db.createDocumentLink(folderId, path.part, docId, versionId, SQLAPI.GET_LINK_WITH_PATH(folder.getName())));
+                result = Optional.of(db.createDocumentLink(folderId, part.name, docId, versionId, SQLAPI.GET_LINK));
             }
             db.commit();               
-            return result.orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(rootId, path)));
+            return result.orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
@@ -425,15 +431,15 @@ public class SQLRepositoryService implements RepositoryService {
     
     
     @Override
-    public NamedRepositoryObject copyObject(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        LOG.entry(rootId, path, path, targetPath, createParent);
+    public NamedRepositoryObject copyObject(RepositoryPath path, RepositoryPath targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(path, path, targetPath, createParent);
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) { 
-            Info info = db.getInfo(Id.of(rootId), path, SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
+            Info info = db.getInfo(path, SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
             switch (info.type) {
-                case DOCUMENT_LINK: copyDocumentLink(rootId, path, targetId, targetPath, createParent);
-                case WORKSPACE: copyWorkspace(rootId, path, targetId, targetPath, createParent);
+                case DOCUMENT_LINK: copyDocumentLink(path, targetPath, createParent);
+                case WORKSPACE: copyWorkspace(path, targetPath, createParent);
                 default:
                     throw LOG.throwing(new RuntimeException("Don't know how to copy " + info.type.toString()));
             }
@@ -443,16 +449,12 @@ public class SQLRepositoryService implements RepositoryService {
     }
     
     @Override
-    public DocumentLink copyDocumentLink(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        LOG.entry(rootId, path, targetId, targetPath, createParent);
+    public DocumentLink copyDocumentLink(RepositoryPath path, RepositoryPath targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(path, targetPath, createParent);
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) { 
-            Id idTarget = Id.of(targetId);
-            QualifiedName baseName = db.getPathTo(idTarget)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(targetId))
-                .addAll(targetPath.parent);
-            DocumentLink result = db.copyDocumentLink(Id.of(rootId), path, idTarget, targetPath, createParent, SQLAPI.GET_LINK_WITH_PATH(baseName));
+            DocumentLink result = db.copyDocumentLink(path, targetPath, createParent, SQLAPI.GET_LINK);
             db.commit();
             return LOG.exit(result);
         } catch (SQLException e) {
@@ -461,36 +463,31 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Workspace copyWorkspace(String rootId, QualifiedName path, String targetId, QualifiedName targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        LOG.entry(rootId, path, targetId, targetPath, createParent);
+    public Workspace copyWorkspace(RepositoryPath path, RepositoryPath targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(path, targetPath, createParent);
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) { 
-            Id idTarget = Id.of(targetId);
-            QualifiedName baseName = db.getPathTo(idTarget)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(targetId))
-                .addAll(targetPath.parent);
-            Workspace result = db.copyFolder(Id.of(rootId), path, idTarget, targetPath, createParent, rs->SQLAPI.getWorkspace(rs, baseName));
+            Workspace result = db.copyFolder(path, targetPath, createParent, SQLAPI.GET_WORKSPACE);
             db.commit();
             return LOG.exit(result);
         } catch (SQLIntegrityConstraintViolationException e) {
-            throw new Exceptions.InvalidWorkspace(targetId, targetPath);
+            throw new Exceptions.InvalidWorkspace(targetPath);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }  
     }
 
     @Override
-    public Workspace createWorkspaceByName(String rootId, QualifiedName path, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
-        LOG.entry(rootId, path, state, metadata, Options.loggable(options));
+    public Workspace createWorkspaceByName(RepositoryPath path, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
+        LOG.entry(path, state, metadata, Options.loggable(options));
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             
-            Id parent_id = path.parent.isEmpty() 
-                ? Id.of(rootId)
-                : db.getOrCreateFolder(Id.of(rootId), path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, path.parent));
-            Workspace result = db.createFolder(parent_id, path.part, state, metadata, rs->SQLAPI.getWorkspace(rs, path.parent));
+            Id parent_id = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(path.parent));
+            VersionedElement part = (VersionedElement)path.part;
+            Workspace result = db.createFolder(parent_id, part.name, state, metadata, SQLAPI.GET_WORKSPACE);
             db.commit();
             return result;
         } catch (SQLException e) {
@@ -499,21 +496,15 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Workspace createWorkspaceAndName(String rootId, QualifiedName workspacePath, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
-        LOG.entry(rootId, workspacePath, state, metadata, Options.loggable(options));
+    public Workspace createWorkspaceAndName(RepositoryPath workspacePath, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
+        LOG.entry(workspacePath, state, metadata, Options.loggable(options));
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
-            Id root = Id.of(rootId);
-            Id folderId = workspacePath.isEmpty() 
-                ? root 
-                : db.getOrCreateFolder(root, workspacePath, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID)
-                    .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId, workspacePath));
+            Id folderId = db.getOrCreateFolder(workspacePath, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID)
+                .orElseThrow(()->new Exceptions.InvalidWorkspace(workspacePath));
             String name = db.generateUniqueName(folderId, getBaseName(metadata));
-            QualifiedName fullWorkspaceName = db.getPathTo(root)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
-                .addAll(workspacePath);            
-            Workspace result = db.createFolder(folderId, name, state, metadata, rs->SQLAPI.getWorkspace(rs, fullWorkspaceName));
+            Workspace result = db.createFolder(folderId, name, state, metadata, SQLAPI.GET_WORKSPACE);
             db.commit();               
             return LOG.exit(result);
         } catch (SQLException e) {
@@ -522,16 +513,15 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Workspace updateWorkspaceByName(String rootId, QualifiedName path, Workspace.State state, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace {
-        LOG.entry(rootId, path, state, metadata, Options.loggable(options));
+    public Workspace updateWorkspaceByName(RepositoryPath path, Workspace.State state, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace {
+        LOG.entry(path, state, metadata, Options.loggable(options));
         boolean createMissing = Options.CREATE_MISSING_ITEM.isIn(options);
 
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {    
-            Id root = Id.of(rootId);
  
-            Optional<Workspace> existing = db.getFolder(root, path, db::getWorkspace);
+            Optional<Workspace> existing = db.getFolder(path, SQLAPI.GET_WORKSPACE);
              
             if (existing.isPresent()) {
                 Workspace existingWorkspace = existing.get();
@@ -544,19 +534,18 @@ public class SQLRepositoryService implements RepositoryService {
                     }
                 }
                 metadata = RepositoryObject.mergeMetadata(existingWorkspace.getMetadata(), metadata);
-                Workspace result = db.updateFolder(folderId, state, metadata, rs->SQLAPI.getWorkspace(rs, existingWorkspace.getName().parent))
-                    .orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path)));
+                Workspace result = db.updateFolder(folderId, state, metadata, SQLAPI.GET_WORKSPACE)
+                    .orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path)));
                 db.commit();           
                 return LOG.exit(result);
             } else {
                 if (createMissing && !path.isEmpty()) { // can't create a folder without a path
-                    Id parentId = path.parent.isEmpty() 
-                        ? root
-                        : db.getOrCreateFolder(root, path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID)
-                            .orElseThrow(doThrowInvalidWorkspace(rootId, path));
-                    return LOG.exit(db.createFolder(parentId, path.part, state, metadata, rs->SQLAPI.getWorkspace(rs, path.parent)));
+                    Id parentId = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), SQLAPI.GET_ID)
+                            .orElseThrow(doThrowInvalidWorkspace(path));
+                    VersionedElement part = (VersionedElement)path.part;
+                    return LOG.exit(db.createFolder(parentId, part.name, state, metadata, SQLAPI.GET_WORKSPACE));
                 } else {
-                    throw LOG.throwing(new Exceptions.InvalidWorkspace(rootId, path));
+                    throw LOG.throwing(new Exceptions.InvalidWorkspace(path));
                 }
             }
         } catch (SQLException e) {
@@ -565,26 +554,29 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public void deleteDocument(String rootId, QualifiedName workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
-        LOG.entry(rootId, workspacePath, documentId);
+    public void deleteDocument(RepositoryPath workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
+        LOG.entry(workspacePath, documentId);
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            db.deleteDocumentById(Id.of(rootId), workspacePath, Id.ofDocument(documentId));
+            db.deleteObject(workspacePath.addDocumentId(documentId, null));
             db.commit();
             LOG.exit();
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
+        } catch (Exceptions.InvalidObjectName e) {
+            throw new Exceptions.InvalidDocumentId(documentId);
         }
     }
 
     @Override
-    public void deleteObjectByName(String rootId, QualifiedName path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
-        LOG.entry(rootId, path);
+    public void deleteObjectByName(RepositoryPath path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        LOG.entry(path);
+        if (path.isEmpty()) throw new Exceptions.InvalidObjectName(path);
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            db.deleteObject(Id.of(rootId), path);
+            db.deleteObject(path);
             db.commit();
             LOG.exit();
         } catch (SQLException e) {
@@ -613,31 +605,18 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public DocumentPart getPart(Reference rfrnc, QualifiedName qn) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
+    public DocumentPart getPart(Reference rfrnc, RepositoryPath qn) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
     @Override
-    public InputStream getData(Reference reference, Optional<QualifiedName> part) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
-        LOG.entry(reference, part);
-        return LOG.exit(filestore.get(filestore.parseKey(reference.version)));
-    }
-
-    @Override
-    public void writeData(Reference reference, Optional<QualifiedName> part, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
-        LOG.entry(reference, part, out);
-        OutputStreamConsumer.of(()->filestore.get(filestore.parseKey(reference.version))).consume(out);
-        LOG.exit();
-    }
-
-    @Override
-    public InputStream getData(String rootId, QualifiedName path, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
-        LOG.entry(rootId, path, Options.loggable(options));
+    public InputStream getData(RepositoryPath path, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
+        LOG.entry(path, Options.loggable(options));
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            DocumentLink link = db.getDocumentLink(Id.of(rootId), path, Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(path.parent))
-                .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
+            DocumentLink link = db.getDocumentLink(path, SQLAPI.GET_LINK)
+                .orElseThrow(()->new Exceptions.InvalidObjectName(path));
             return LOG.exit(filestore.get(filestore.parseKey(link.getVersion())));
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -645,14 +624,14 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public void writeData(String rootId, QualifiedName path, OutputStream out, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
-        LOG.entry(rootId, path, out, Options.loggable(options));
+    public void writeData(RepositoryPath path, OutputStream out, Options.Get... options) throws Exceptions.InvalidObjectName, IOException {
+        LOG.entry(path, out, Options.loggable(options));
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            DocumentLink link = db.getDocumentLink(Id.of(rootId), path, Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(path.parent))
-                .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
-            OutputStreamConsumer.of(()->filestore.get(filestore.parseKey(link.getVersion()))).consume(out);
+            DocumentLink link = db.getDocumentLink(path, SQLAPI.GET_LINK)
+                .orElseThrow(()->new Exceptions.InvalidObjectName(path));
+            OutputStreamConsumer.of(()->filestore.get(filestore.parseKey(link.getReference().version))).consume(out);
             LOG.exit();
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -660,25 +639,8 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Stream<DocumentPart> catalogueParts(Reference rfrnc, QualifiedName qn) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
+    public Stream<DocumentPart> catalogueParts(Reference rfrnc, RepositoryPath qn) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public DocumentLink getDocumentLink(String rootId, QualifiedName path, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        LOG.entry(rootId, path, Options.loggable(options));
-        try (
-            SQLAPI db = dbFactory.getSQLAPI(); 
-        ) {
-            Id id = Id.of(rootId);
-            QualifiedName baseName = db.getPathTo(id)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            DocumentLink link = db.getDocumentLink(id, path, Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(baseName))
-                .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
-            return LOG.exit(link);
-        } catch (SQLException e) {
-            throw LOG.throwing(new RuntimeException(e));
-        }
     }
 
     @Override
@@ -693,7 +655,7 @@ public class SQLRepositoryService implements RepositoryService {
                 // and since we don't plan to convert all metadata into database columns,
                 // we can't do this until AFTER the filter operation is applied to the stream.
                 final Comparator<Timestamped<Document>> SORT = (ta,tb)->ta.timestamp.compareTo(tb.timestamp);
-                final Function<Timestamped<Document>,String> GROUP = t->t.value.getId();
+                final Function<Timestamped<Document>,String> GROUP = t->t.value.getReference().id;
                 try (Stream<Timestamped<Document>> versions = db.getDocuments(query, true, SQLAPI.getTimestamped(SQLAPI.GET_DOCUMENT))) {
                     docs = versions
                         .filter(ts->query.containsItem(ts.value.toJson(this,0,1)))
@@ -715,15 +677,12 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Stream<NamedRepositoryObject> catalogueById(String rootId, QualifiedName workspacePath, String documentId, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
-         LOG.entry(rootId, workspacePath, documentId, query, Options.loggable(options));
+    public Stream<NamedRepositoryObject> catalogueById(RepositoryPath workspacePath, String documentId, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
+         LOG.entry(workspacePath, documentId, query, Options.loggable(options));
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Id id = Id.of(rootId);
-            QualifiedName baseName = db.getPathTo(id)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Stream<NamedRepositoryObject> links = db.getDocumentLinks(id, workspacePath, Id.of(documentId), query, SQLAPI.GET_LINK_WITH_PATH(baseName))
+            Stream<NamedRepositoryObject> links = db.getDocumentLinks(workspacePath.addDocumentId(documentId, null), query, false, SQLAPI.GET_LINK)
                 .filter(link->query.containsItem(link.toJson(this,0,1)))
                 .map(NamedRepositoryObject.class::cast);
             return LOG.exit(links);
@@ -733,26 +692,22 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Stream<NamedRepositoryObject> catalogueByName(String rootId, QualifiedName path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
-        LOG.entry(rootId, path, Options.loggable(options));
+    public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
+        LOG.entry(path, Options.loggable(options));
         
         if (!Options.NO_IMPLICIT_WILDCARD.isIn(options)) {
-            Predicate<String> hasWildcards = element -> !Parsers.parseUnixWildcard(element).isSimple();
-            if (path.isEmpty() || path.indexFromEnd(hasWildcards) < 0) {
-                path = path.add("*");
+            if (path.isEmpty() || !path.find(RepositoryPath::isWildcard).isPresent()) {
+                path = path.addDocumentPath("*");
             }
         }
 		
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Id id = Id.of(rootId);
-            QualifiedName baseName = db.getPathTo(id)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Stream<NamedRepositoryObject> links = db.getDocumentLinks(id, path, query, SQLAPI.GET_LINK_WITH_PATH(baseName))
+            Stream<NamedRepositoryObject> links = db.getDocumentLinks(path, query, true, SQLAPI.GET_LINK)
                 .filter(link->query.containsItem(link.toJson(this,1,0)))
                 .map(NamedRepositoryObject.class::cast);
-            Stream<NamedRepositoryObject> workspaces = db.getFolders(id, path, query, rs->SQLAPI.getWorkspace(rs, baseName))
+            Stream<NamedRepositoryObject> workspaces = db.getFolders(path, query, SQLAPI.GET_WORKSPACE)
                 .filter(link->query.containsItem(link.toJson(this,1,0)))
                 .map(NamedRepositoryObject.class::cast);
             return LOG.exit(Stream.concat(links, workspaces));
@@ -776,24 +731,20 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public NamedRepositoryObject getObjectByName(String rootId, QualifiedName path, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        LOG.entry(rootId, path);
+    public NamedRepositoryObject getObjectByName(RepositoryPath path, Options.Get... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(path);
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Id id = Id.of(rootId);
-            QualifiedName baseName = db.getPathTo(id)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId))
-                .addAll(path)
-                .parent;
-            Info info = db.getInfo(id,path,SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path));
+            Info info = db.getInfo(path,SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
+            RepositoryPath shortPath = RepositoryPath.ROOT.addId(info.id.toString());
             switch(info.type) {
                 case WORKSPACE:
-                    return LOG.exit(db.getFolder(info.parent_id, QualifiedName.of(info.name), rs->SQLAPI.getWorkspace(rs, baseName))
-                        .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path)));
+                    return LOG.exit(db.getFolder(shortPath, SQLAPI.GET_WORKSPACE)
+                        .orElseThrow(()->new Exceptions.InvalidObjectName(shortPath)));
                 case DOCUMENT_LINK:
-                    return LOG.exit(db.getDocumentLink(info.parent_id, QualifiedName.of(info.name), Options.VERSION.getValue(options), SQLAPI.GET_LINK_WITH_PATH(baseName))
-                        .orElseThrow(()->new Exceptions.InvalidObjectName(rootId, path)));
+                    return LOG.exit(db.getDocumentLink(shortPath, SQLAPI.GET_LINK)
+                        .orElseThrow(()->new Exceptions.InvalidObjectName(shortPath)));
                 default:
                     throw LOG.throwing(new RuntimeException("Don't know how to get " + info.type));
             }
@@ -804,39 +755,49 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Workspace getWorkspaceByName(String rootId, QualifiedName path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
-        LOG.entry(rootId, path);
-        if (path == null) path = QualifiedName.ROOT;
+    public Workspace getWorkspaceByName(RepositoryPath path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
+        LOG.entry(path);
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Id id = Id.of(rootId);
-            QualifiedName baseName = db.getPathTo(id)
-                .orElseThrow(()->new Exceptions.InvalidWorkspace(rootId));
-            Workspace workspace = db.getFolder(Id.of(rootId), path, rs->SQLAPI.getWorkspace(rs, baseName))
-                .orElseThrow(doThrowInvalidWorkspace(rootId, path));
+            Workspace workspace = db.getFolder(path, SQLAPI.GET_WORKSPACE)
+                .orElseThrow(doThrowInvalidWorkspace(path));
             return LOG.exit(workspace);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
     }
 
+
+    
     @Override
-    public Stream<DocumentLink> listWorkspaces(String documentId, QualifiedName pathFilter, Query filter, Options.Search... options) throws Exceptions.InvalidDocumentId {
+    public Stream<DocumentLink> listWorkspaces(String documentId, RepositoryPath pathFilter, Query filter, Options.Search... options) throws Exceptions.InvalidDocumentId {
         LOG.entry(pathFilter, documentId, filter, Options.loggable(options));
-        if (pathFilter == null) pathFilter = QualifiedName.ROOT;
+        if (pathFilter == null) pathFilter = RepositoryPath.ROOT;
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             Id id = Id.ofDocument(documentId);
             Document document = db.getDocument(id, null, SQLAPI.GET_DOCUMENT)
                 .orElseThrow(()->LOG.throwing(new Exceptions.InvalidDocumentId(documentId)));
-            Stream<DocumentLink> links = db.getDocumentLinks(pathFilter, id, filter, db::getLink)
+            Stream<DocumentLink> links = db.getDocumentLinks(pathFilter.addDocumentId(documentId, null), filter, false, SQLAPI.GET_LINK)
                 .filter(link->filter.containsItem(link.toJson(this,1,0)));
             return LOG.exit(links);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
     }
-    
+
+    @Override
+    public InputStream getData(Reference rfrnc, Optional<QualifiedName> partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+        if (partName.isPresent()) throw new UnsupportedOperationException("Doesn't support a part name");
+        return filestore.get(filestore.parseKey(rfrnc.version));
+    }
+
+    @Override
+    public void writeData(Reference rfrnc, Optional<QualifiedName> partName, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+        if (partName.isPresent()) throw new UnsupportedOperationException("Doesn't support a part name");
+        OutputStreamConsumer.of(()->filestore.get(filestore.parseKey(rfrnc.version))).consume(out);
+    }
+        
 }

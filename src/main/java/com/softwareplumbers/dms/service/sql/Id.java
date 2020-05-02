@@ -17,7 +17,8 @@ import java.util.UUID;
 public class Id {
     private final byte[] data;
     
-    public static final Id ROOT_ID = new Id(new byte[] { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 });
+    private static final byte[] ROOT_ID_DATA = new byte[] { 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0 };
+    public static final Id ROOT_ID = new Id(ROOT_ID_DATA);
     
     public Id(String id) {
         data = new byte[16];
@@ -65,6 +66,12 @@ public class Id {
     public static Id of(String string) {
         if (string == Constants.ROOT_ID) return ROOT_ID;
         else return new Id(string);
+    }
+    
+    public static Id of(byte[] bytes) {
+        if (bytes == null) return null;
+        if (Arrays.equals(bytes, ROOT_ID_DATA)) return ROOT_ID;
+        return new Id(bytes);
     }
     
     public static Id ofDocument(String string) {

@@ -8,7 +8,8 @@ package com.softwareplumbers.dms.service.sql;
 import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.abstractquery.visitor.Formatter;
 import com.softwareplumbers.common.abstractquery.visitor.Visitors;
-import com.softwareplumbers.common.abstractquery.visitor.Visitors.SQLFormat.Relationship;
+import com.softwareplumbers.common.abstractquery.visitor.Visitors.Relationship;
+import com.softwareplumbers.common.abstractquery.visitor.Visitors.SQLResult;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -63,8 +64,8 @@ public class Schema {
     }
 
     private static final List<QualifiedName> DOCUMENT_FIELDS = fieldList(
-        QualifiedName.of("id"),
-        QualifiedName.of("version"),
+        QualifiedName.of("reference","id"),
+        QualifiedName.of("reference","version"),
         QualifiedName.of("mediaType"),
         QualifiedName.of("digest"),
         QualifiedName.of("length"),
@@ -74,7 +75,8 @@ public class Schema {
     private static final List<QualifiedName> NODE_FIELDS = fieldList(
         QualifiedName.of("parentId"),
         QualifiedName.of("name"),
-        QualifiedName.of("deleted")
+        QualifiedName.of("deleted"),
+        QualifiedName.of("version")
     );
 
     private static final List<QualifiedName> FOLDER_FIELDS = fieldList(NODE_FIELDS,
@@ -85,19 +87,20 @@ public class Schema {
     private static final List<QualifiedName> LINK_FIELDS = fieldList(NODE_FIELDS, DOCUMENT_FIELDS);
     
     private static final Map<QualifiedName, String> NODE_NAME_MAP = nameMap(
+        mapEntry("ID", "id"),
+        mapEntry("VERSION", "version"),
         mapEntry("PARENT_ID", "parentId"),
         mapEntry("NAME", "name"),
         mapEntry("DELETED", "deleted")
     );
     
     private static final Map<QualifiedName, String> FOLDER_NAME_MAP = nameMap(NODE_NAME_MAP,
-        mapEntry("STATE", "state"),
-        mapEntry("ID", "id")
+        mapEntry("STATE", "state")
     );
 
     private static final Map<QualifiedName, String> DOCUMENT_NAME_MAP = nameMap(
-        mapEntry("ID", "id"),
-        mapEntry("VERSION", "version"),
+        mapEntry("DOCUMENT_ID", "reference", "id"),
+        mapEntry("VERSION", "reference", "version"),
         mapEntry("MEDIA_TYPE", "mediaType"),
         mapEntry("DIGEST", "digest"),
         mapEntry("LENGTH", "length"),
@@ -105,8 +108,8 @@ public class Schema {
     );
 
     private static final Map<QualifiedName, String> LINK_NAME_MAP = nameMap(NODE_NAME_MAP,
-        mapEntry("DOCUMENT_ID", "id"),
-        mapEntry("VERSION_ID", "version"),
+        mapEntry("DOCUMENT_ID", "reference", "id"),
+        mapEntry("VERSION_ID", "reference", "version"),
         mapEntry("MEDIA_TYPE", "mediaType"),
         mapEntry("DIGEST", "digest"),
         mapEntry("LENGTH", "length")
@@ -132,7 +135,6 @@ public class Schema {
     
     private static final String mapNodeName(QualifiedName qname) {
         if (qname.isEmpty()) return "NODES";
-        if (qname.equals(QualifiedName.of("id"))) return "ID";
         if (qname.get(0).equals("parent")) return mapFolderName(qname.rightFromStart(1));
         return NODE_NAME_MAP.get(qname);        
     }
@@ -152,11 +154,11 @@ public class Schema {
         return null;
     }
     
-    private static final Formatter<String> LINK_FORMATTER = Visitors.SQL(Schema::mapLinkName, Schema::getRelationship);
-    private static final Formatter<String> LINK_VERSION_FORMATTER = Visitors.SQL(Schema::mapLinkVersionName, Schema::getRelationship);
-    private static final Formatter<String> FOLDER_FORMATTER = Visitors.SQL(Schema::mapFolderName, Schema::getRelationship);
-    private static final Formatter<String> NODE_FORMATTER = Visitors.SQL(Schema::mapNodeName, Schema::getRelationship);
-    private static final Formatter<String> DOCUMENT_FORMATTER = Visitors.SQL(Schema::mapDocumentName, name->null);
+    private static final Formatter<SQLResult> LINK_FORMATTER = Visitors.ParameterizedSQL(Schema::mapLinkName, Schema::getRelationship);
+    private static final Formatter<SQLResult> LINK_VERSION_FORMATTER = Visitors.ParameterizedSQL(Schema::mapLinkVersionName, Schema::getRelationship);
+    private static final Formatter<SQLResult> FOLDER_FORMATTER = Visitors.ParameterizedSQL(Schema::mapFolderName, Schema::getRelationship);
+    private static final Formatter<SQLResult> NODE_FORMATTER = Visitors.ParameterizedSQL(Schema::mapNodeName, Schema::getRelationship);
+    private static final Formatter<SQLResult> DOCUMENT_FORMATTER = Visitors.ParameterizedSQL(Schema::mapDocumentName, name->null);
     
     private String updateScript;
     private String createScript;
@@ -213,19 +215,19 @@ public class Schema {
         return DOCUMENT_FIELDS;
     }
     
-    public Formatter<String> getLinkFormatter(boolean withVersions) {
+    public Formatter<SQLResult> getLinkFormatter(boolean withVersions) {
         return withVersions ? LINK_VERSION_FORMATTER : LINK_FORMATTER;
     }
     
-    public Formatter<String> getFolderFormatter() {
+    public Formatter<SQLResult> getFolderFormatter() {
         return FOLDER_FORMATTER;
     }
     
-    public Formatter<String> getNodeFormatter() {
+    public Formatter<SQLResult> getNodeFormatter() {
         return NODE_FORMATTER;
     }
     
-    public Formatter<String> getDocumentFormatter() {
+    public Formatter<SQLResult> getDocumentFormatter() {
         return DOCUMENT_FORMATTER;
     }
 }

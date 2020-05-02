@@ -33,9 +33,12 @@
                     ID UUID PRIMARY KEY,
                     PARENT_ID UUID,
                     NAME VARCHAR(255),
+                    VERSION VARCHAR(255) DEFAULT '',
                     TYPE VARCHAR(16),
                     DELETED BOOLEAN DEFAULT FALSE
                 );
+                
+                INSERT INTO NODES (ID, TYPE) VALUES ('00000000-0000-0000-0000-000000000000', 'WORKSPACE');
 
                 CREATE TABLE LINKS (
                     ID UUID PRIMARY KEY,
@@ -65,6 +68,7 @@
                     METADATA CLOB
                 );
 
+                INSERT INTO FOLDERS (ID, STATE, METADATA) VALUES ('00000000-0000-0000-0000-000000000000', 'Open', '{}');
 
             </value>
         </property>
@@ -73,7 +77,7 @@
             <value>
                 
                 CREATE OR REPLACE VIEW VIEW_DOCUMENTS AS SELECT
-                    VERSIONS.DOCUMENT_ID AS ID,
+                    VERSIONS.DOCUMENT_ID AS DOCUMENT_ID,
                     VERSIONS.ID AS VERSION_ID,
                     VERSIONS.MEDIA_TYPE AS MEDIA_TYPE,
                     VERSIONS.LENGTH AS LENGTH,
@@ -92,8 +96,10 @@
                     NODES.PARENT_ID AS PARENT_ID,
                     NODES.NAME AS NAME,
                     NODES.DELETED AS DELETED,
+                    NODES.VERSION AS VERSION,
+                    NODES.TYPE AS TYPE,
                     LINKS.VERSIONED AS VERSIONED,
-                    VIEW_DOCUMENTS.ID AS DOCUMENT_ID,
+                    VIEW_DOCUMENTS.DOCUMENT_ID AS DOCUMENT_ID,
                     VIEW_DOCUMENTS.VERSION_ID AS VERSION_ID,
                     VIEW_DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
                     VIEW_DOCUMENTS.LENGTH AS LENGTH,
@@ -105,7 +111,7 @@
                 INNER JOIN
                     LINKS ON (NODES.ID = LINKS.ID)
                 INNER JOIN
-                    VIEW_DOCUMENTS ON (LINKS.DOCUMENT_ID = VIEW_DOCUMENTS.ID)
+                    VIEW_DOCUMENTS ON (LINKS.DOCUMENT_ID = VIEW_DOCUMENTS.DOCUMENT_ID)
                 ;
                            
                 CREATE OR REPLACE VIEW VIEW_LINKS AS SELECT
@@ -113,6 +119,8 @@
                     NODES.PARENT_ID AS PARENT_ID,
                     NODES.NAME AS NAME,
                     NODES.DELETED AS DELETED,
+                    NODES.VERSION AS VERSION,
+                    NODES.TYPE AS TYPE,
                     LINKS.VERSIONED AS VERSIONED,
                     VERSIONS.DOCUMENT_ID AS DOCUMENT_ID,
                     VERSIONS.ID AS VERSION_ID,
@@ -134,8 +142,10 @@
                     NODES.PARENT_ID AS PARENT_ID,
                     NODES.NAME AS NAME,
                     NODES.DELETED AS DELETED,
+                    NODES.VERSION AS VERSION,
+                    NODES.TYPE AS TYPE,
                     LINKS.VERSIONED AS VERSIONED,
-                    VIEW_DOCUMENTS.ID AS DOCUMENT_ID,
+                    VIEW_DOCUMENTS.DOCUMENT_ID AS DOCUMENT_ID,
                     VIEW_DOCUMENTS.VERSION_ID AS VERSION_ID,
                     VIEW_DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
                     VIEW_DOCUMENTS.LENGTH AS LENGTH,
@@ -147,7 +157,7 @@
                 INNER JOIN
                     LINKS ON (NODES.ID = LINKS.ID)
                 INNER JOIN
-                    VIEW_DOCUMENTS ON (LINKS.DOCUMENT_ID = VIEW_DOCUMENTS.ID)
+                    VIEW_DOCUMENTS ON (LINKS.DOCUMENT_ID = VIEW_DOCUMENTS.DOCUMENT_ID)
                 WHERE
                     LINKS.VERSIONED = FALSE AND VIEW_DOCUMENTS.LATEST = TRUE
                 ;
@@ -157,6 +167,8 @@
                     NODES.PARENT_ID AS PARENT_ID,
                     NODES.NAME AS NAME,
                     NODES.DELETED AS DELETED,
+                    NODES.VERSION AS VERSION,
+                    NODES.TYPE AS TYPE,
                     FOLDERS.STATE AS STATE,
                     FOLDERS.METADATA AS METADATA
                 FROM
@@ -328,8 +340,9 @@
                 T0.ID, 
                 T0.PARENT_ID,
                 T0.NAME,
+                T0.VERSION,
                 T0.DELETED, 
-                T0.VERSIONED, 
+                T0.VERSIONED,
                 T0.DOCUMENT_ID, 
                 T0.VERSION_ID,
                 T0.CREATED,
@@ -347,6 +360,7 @@
                     T0.ID, 
                     T0.PARENT_ID,
                     T0.NAME,
+                    T0.VERSION,
                     T0.DELETED, 
                     T0.STATE,
                     T0.METADATA,
@@ -360,6 +374,7 @@
                     T0.ID, 
                     T0.PARENT_ID,
                     T0.NAME,
+                    T0.VERSION,
                     T0.DELETED, 
                     T0.TYPE,
                     !{0} AS PATH
@@ -369,7 +384,7 @@
         <property name="FetchDocument">
             <value>
                 SELECT 
-                    ID, 
+                    DOCUMENT_ID, 
                     VERSION_ID,
                     CREATED,
                     MEDIA_TYPE,

@@ -5,6 +5,7 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.abstractquery.visitor.Visitors.SQLResult;
 import org.apache.commons.text.StringSubstitutor;
 import org.apache.commons.text.lookup.StringLookup;
 
@@ -42,6 +43,5 @@ public class Templates {
         };
         StringSubstitutor substitutor = new StringSubstitutor(lookup,"!{","}",'\\');
         return substitutor.replace(template);
-    }
-    
+    }  
 }

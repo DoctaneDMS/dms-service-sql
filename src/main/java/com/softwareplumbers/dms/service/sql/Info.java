@@ -5,8 +5,8 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.dms.RepositoryObject;
+import com.softwareplumbers.dms.RepositoryPath;
 
 /**
  *
@@ -16,10 +16,10 @@ public class Info {
     public final Id id;
     public final Id parent_id;
     public final String name;
-    public final QualifiedName path;
+    public final RepositoryPath path;
     public final RepositoryObject.Type type;
     
-    public Info(Id id, Id parent_id, String name, QualifiedName path, RepositoryObject.Type type) {
+    public Info(Id id, Id parent_id, String name, RepositoryPath path, RepositoryObject.Type type) {
         this.id = id;
         this.parent_id = parent_id;
         this.name = name;

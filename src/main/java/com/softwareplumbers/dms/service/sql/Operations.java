@@ -104,7 +104,7 @@ public class Operations {
     
     @Autowired
     public Operations(Templates templates) {
-        fetchLatestDocument = templates.substitute(templates.fetchDocument, "FROM VIEW_DOCUMENTS WHERE ID=? AND LATEST=TRUE");
-        fetchDocument = templates.substitute(templates.fetchDocument, "FROM VIEW_DOCUMENTS WHERE ID=? AND VERSION_ID=?");
+        fetchLatestDocument = templates.substitute(templates.fetchDocument, "FROM VIEW_DOCUMENTS WHERE DOCUMENT_ID=? AND LATEST=TRUE");
+        fetchDocument = templates.substitute(templates.fetchDocument, "FROM VIEW_DOCUMENTS WHERE DOCUMENT_ID=? AND VERSION_ID=?");
     }
 }
