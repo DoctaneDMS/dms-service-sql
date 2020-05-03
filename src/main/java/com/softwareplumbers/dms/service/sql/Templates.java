@@ -19,6 +19,7 @@ public class Templates {
     public String fetchFolder;
     public String fetchInfo;
     public String fetchDocument;
+    public String nameExpr;
 
     public void setFetchDocumentLink(String template) {
         fetchDocumentLink = template;
@@ -34,6 +35,10 @@ public class Templates {
     
     public void setFetchDocument(String template) {
         fetchDocument = template;
+    }
+    
+    public void setNameExpr(String template) {
+        nameExpr = template;
     }
 
     public static String substitute(String template, Object... parameters) {

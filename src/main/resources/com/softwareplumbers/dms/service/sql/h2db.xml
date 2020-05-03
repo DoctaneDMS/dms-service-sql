@@ -177,7 +177,7 @@
                     FOLDERS ON (NODES.ID = FOLDERS.ID)         
                 ;   
                 
-                CREATE UNIQUE INDEX NODE_NAME ON NODES (PARENT_ID, NAME);
+                CREATE UNIQUE INDEX NODE_NAME ON NODES (PARENT_ID, NAME, VERSION);
                 CREATE INDEX VERSION_BY_DOCUMENT ON VERSIONS(DOCUMENT_ID);
              
             </value>
@@ -195,7 +195,7 @@
                     WHERE PARENT_ID = '00000000-0000-0000-0000-000000000000' 
                     UNION ALL SELECT 
                         NODES.ID, 
-                        IFNULL(LINK.NAME || '/', '') || NODES.NAME 
+                        IFNULL(LINK.NAME || '/', '') || NODES.NAME || NVL2(NODES.VERSION, '@' || NODES.VERSION, '')
                     FROM LINK 
                     INNER JOIN NODES ON LINK.ID = NODES.PARENT_ID
                 ) 
@@ -224,6 +224,18 @@
             </value>
         </property>
         
+        <property name="CopyNode">
+            <value>
+                INSERT INTO NODES (ID, PARENT_ID, NAME, VERSION, TYPE, DELETED) SELECT ?, ?, NAME, VERSION, TYPE, DELETED FROM NODES WHERE ID = ?  
+            </value>
+        </property>
+
+        <property name="PublishNode">
+            <value>
+                INSERT INTO NODES (ID, PARENT_ID, NAME, VERSION, TYPE, DELETED) SELECT ?, PARENT_ID, NAME, ?, TYPE, FALSE FROM NODES WHERE ID = ?  
+            </value>
+        </property>
+                
         <property name="CreateFolder">
             <value>
                 INSERT INTO FOLDERS (ID, STATE, METADATA) VALUES (?,?,?)
@@ -253,6 +265,16 @@
                 WHERE ID = ?                
             </value>
         </property>
+
+        <property name="PublishLink">
+            <value>
+                INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) 
+                SELECT ?, DOCUMENT_ID, VERSION_ID, TRUE
+                FROM VIEW_LINKS
+                WHERE ID = ?                
+            </value>
+        </property>
+
         <property name="UpdateDocument">
             <value>
                 UPDATE DOCUMENTS SET LATEST_VERSION = ? WHERE ID = ?
@@ -393,6 +415,9 @@
                     METADATA
                 !{0}
             </value>
+        </property>
+        <property name="NameExpr">
+            <value> || '/' || T!{0}.NAME || NVL2(T!{0}.VERSION, '@' || T!{0}.VERSION, '')</value>
         </property>
     </bean>
 

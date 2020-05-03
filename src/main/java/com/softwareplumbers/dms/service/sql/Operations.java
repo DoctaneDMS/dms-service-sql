@@ -33,6 +33,9 @@ public class Operations {
     public String copyLink;
     public String lockVersions;
     public String unlockVersions;
+    public String copyNode;
+    public String publishNode;
+    public String publishLink;
 
     public void setCreateDocument(String sql) {
         createDocument = sql;
@@ -102,6 +105,18 @@ public class Operations {
         lockVersions = sql;
     }
     
+    public void setCopyNode(String sql) {
+        copyNode = sql;
+    }
+    
+    public void setPublishNode(String sql) {
+        publishNode = sql;
+    }
+    
+    public void setPublishLink(String sql) {
+        publishLink = sql;
+    }
+        
     @Autowired
     public Operations(Templates templates) {
         fetchLatestDocument = templates.substitute(templates.fetchDocument, "FROM VIEW_DOCUMENTS WHERE DOCUMENT_ID=? AND LATEST=TRUE");

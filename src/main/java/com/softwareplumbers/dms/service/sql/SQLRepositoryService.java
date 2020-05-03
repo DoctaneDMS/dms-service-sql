@@ -23,6 +23,7 @@ import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.RepositoryPath.ElementType;
 import com.softwareplumbers.dms.RepositoryPath.VersionedElement;
 import com.softwareplumbers.dms.RepositoryService;
+import com.softwareplumbers.dms.VersionedRepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.common.impl.DocumentImpl;
 import com.softwareplumbers.dms.common.impl.LocalData;
@@ -798,6 +799,30 @@ public class SQLRepositoryService implements RepositoryService {
     public void writeData(Reference rfrnc, Optional<QualifiedName> partName, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
         if (partName.isPresent()) throw new UnsupportedOperationException("Doesn't support a part name");
         OutputStreamConsumer.of(()->filestore.get(filestore.parseKey(rfrnc.version))).consume(out);
+    }
+    
+    @Override
+    public VersionedRepositoryObject publish(RepositoryPath path, String name) throws Exceptions.InvalidObjectName {
+        try (
+            SQLAPI db = dbFactory.getSQLAPI(); 
+        ) {
+            Info info = db.getInfo(path, SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
+            RepositoryPath published = RepositoryPath.ROOT.addId(db.publish(info.id, name).toString());
+            VersionedRepositoryObject result;
+            switch (info.type) {
+                case DOCUMENT_LINK:
+                    result = db.getDocumentLink(published, SQLAPI.GET_LINK).orElseThrow(()->new RuntimeException("Failed to publish"));
+                    break;
+                case WORKSPACE:
+                    result = db.getFolder(published, SQLAPI.GET_WORKSPACE).orElseThrow(()->new RuntimeException("Failed to publish")); 
+                    break;
+                default:
+                    throw new RuntimeException("unknown type " + info.type);
+            }
+            return LOG.exit(result);
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
     }
         
 }

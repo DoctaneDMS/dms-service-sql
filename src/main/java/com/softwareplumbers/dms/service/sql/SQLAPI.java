@@ -290,12 +290,13 @@ public class SQLAPI implements AutoCloseable {
         return result;        
     }
     
+    
     String getNameExpression(RepositoryPath basePath, RepositoryPath path) {
         StringBuilder builder = new StringBuilder();
         int depth = path.afterRootId().size();
         builder.append("'").append(basePath.join("/")).append("'");      
         for (int i = depth - 1; i >= 0 ; i--)
-            builder.append(" || '/' || T").append(i).append(".NAME");
+            builder.append(Templates.substitute(templates.nameExpr, i));
         return builder.toString();
     }
     
@@ -304,7 +305,7 @@ public class SQLAPI implements AutoCloseable {
         int depth = path.afterRootId().size();
         builder.append("?");      
         for (int i = depth - 1; i >= 0 ; i--)
-            builder.append(" || '/' || T").append(i).append(".NAME");
+            builder.append(Templates.substitute(templates.nameExpr, i));
         return new SQLResult(builder.toString(), Collections.singletonList("basePath"));
     }
     
@@ -346,7 +347,7 @@ public class SQLAPI implements AutoCloseable {
     
     String getDocumentSearchHistorySQL(Query query) {
         query = getDBFilterExpression(schema.getDocumentFields(), query);
-        query = query.intersect(Query.from("id", Range.equals(Param.from("0"))));
+        query = query.intersect(Query.from(QualifiedName.of("reference","id"), Range.equals(Param.from("0"))));
         return Templates.substitute(templates.fetchDocument, query.toExpression(schema.getDocumentFormatter()).sql);
     }
     
@@ -703,7 +704,86 @@ public class SQLAPI implements AutoCloseable {
         }
     }
     
+    public void copy(Id nodeId, Id newParentId) throws SQLException {
+        LOG.entry(nodeId, newParentId);
+        Id newId = new Id();
+        FluentStatement.of(operations.copyNode)
+            .set(1, newId)
+            .set(2, newParentId)
+            .set(3, nodeId)
+            .execute(con); 
+        FluentStatement.of(operations.copyLink)
+            .set(1, newId)
+            .set(2, nodeId)
+            .execute(con);
+        FluentStatement.of(operations.copyFolder)
+            .set(1, newId)
+            .set(2, nodeId)
+            .execute(con);
+        Iterable<Id> children = FluentStatement.of(operations.fetchChildren)
+            .set(1, nodeId)
+            .execute(con, GET_ID)
+            .collect(Collectors.toList());
+        for (Id child : children) {
+            copy(child, newId);
+        }
+        LOG.exit();
+    }
     
+    public void publishChild(Id nodeId, Id newParentId) throws SQLException {
+        LOG.entry(nodeId, newParentId);
+        Id newId = new Id();
+        FluentStatement.of(operations.copyNode)
+            .set(1, newId)
+            .set(2, newParentId)
+            .set(3, nodeId)
+            .execute(con); 
+        FluentStatement.of(operations.publishLink)
+            .set(1, newId)
+            .set(2, nodeId)
+            .execute(con);
+        FluentStatement.of(operations.copyFolder)
+            .set(1, newId)
+            .set(2, nodeId)
+            .execute(con);
+        Iterable<Id> children = FluentStatement.of(operations.fetchChildren)
+            .set(1, nodeId)
+            .execute(con, GET_ID)
+            .collect(Collectors.toList());
+        for (Id child : children) {
+            copy(child, newId);
+        }
+        LOG.exit();
+    }
+    
+    public Id publish(Id nodeId, String version) throws SQLException {
+        LOG.entry(nodeId, version);
+        Id newId = new Id();
+        FluentStatement.of(operations.publishNode)
+            .set(1, newId)
+            .set(2, version)
+            .set(3, nodeId)
+            .execute(con); 
+        int links = FluentStatement.of(operations.publishLink)
+            .set(1, newId)
+            .set(2, nodeId)
+            .execute(con);
+        int folders = FluentStatement.of(operations.copyFolder)
+            .set(1, newId)
+            .set(2, nodeId)
+            .execute(con);
+        
+        Iterable<Id> children = FluentStatement.of(operations.fetchChildren)
+            .set(1, nodeId)
+            .execute(con, GET_ID)
+            .collect(Collectors.toList());
+        for (Id child : children) {
+            publishChild(child, newId);
+        }
+        
+        return newId;
+    }
+        
     public <T> T createDocumentLink(Id folderId, String name, Id docId, Id version, Mapper<T> mapper) throws SQLException, InvalidWorkspace {
         LOG.entry(folderId, name, docId, version);
         Id id = new Id();
