@@ -190,12 +190,12 @@
         <property name="FetchPathToId">
             <value>
                 WITH LINK(ID,NAME) AS (
-                    SELECT ID,NAME 
+                    SELECT ID,NODES.NAME || CASEWHEN(NODES.VERSION='', '', '@' || NODES.VERSION)
                     FROM NODES 
                     WHERE PARENT_ID = '00000000-0000-0000-0000-000000000000' 
                     UNION ALL SELECT 
                         NODES.ID, 
-                        IFNULL(LINK.NAME || '/', '') || NODES.NAME || NVL2(NODES.VERSION, '@' || NODES.VERSION, '')
+                        IFNULL(LINK.NAME || '/', '') || NODES.NAME || CASEWHEN(NODES.VERSION='', '', '@' || NODES.VERSION)
                     FROM LINK 
                     INNER JOIN NODES ON LINK.ID = NODES.PARENT_ID
                 ) 
@@ -417,7 +417,7 @@
             </value>
         </property>
         <property name="NameExpr">
-            <value> || '/' || T!{0}.NAME || NVL2(T!{0}.VERSION, '@' || T!{0}.VERSION, '')</value>
+            <value> || '/' || T!{0}.NAME || CASEWHEN(T!{0}.VERSION='', '', '@' || T!{0}.VERSION)</value>
         </property>
     </bean>
 

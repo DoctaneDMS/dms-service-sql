@@ -55,7 +55,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.softwareplumbers.common.abstractquery.visitor.Visitors.SQLResult;
 import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
+import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.RepositoryPath.Element;
+import com.softwareplumbers.dms.VersionedRepositoryObject;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Collections;
@@ -195,14 +197,14 @@ public class SQLAPI implements AutoCloseable {
     Schema schema;
     Connection con;
     
-    Query getNameQuery(RepositoryPath name, boolean hideDeleted, boolean implicitRoot) {
+    Query getNameQuery(RepositoryPath name, boolean hideDeleted, boolean freeSearch) {
         
         if (name.isEmpty()) return Query.UNBOUNDED;
         
         Query result;
         
         if (name.parent.isEmpty()) {
-            if (name.part.type != RepositoryPath.ElementType.OBJECT_ID && implicitRoot) {
+            if (name.part.type != RepositoryPath.ElementType.OBJECT_ID && !freeSearch) {
                 result = Query.from("parentId", Range.equals(Json.createValue(Id.ROOT_ID.toString())));              
             } else {
                 result = Query.UNBOUNDED;
@@ -214,7 +216,7 @@ public class SQLAPI implements AutoCloseable {
                 // is just on the node id
                 result = Query.from("parentId", Range.like(((IdElement)name.parent.part).id));
             } else {
-                result = Query.from("parent", getNameQuery(name.parent, hideDeleted, implicitRoot));
+                result = Query.from("parent", getNameQuery(name.parent, hideDeleted, freeSearch));
             }
         }
         
@@ -353,8 +355,8 @@ public class SQLAPI implements AutoCloseable {
     
 
     
-    String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean implicitRoot) {
-        filter = getDBFilterExpression(schema.getLinkFields(), filter).intersect(getNameQuery(nameWithPatterns, true, implicitRoot));
+    String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean freeSearch) {
+        filter = getDBFilterExpression(schema.getLinkFields(), filter).intersect(getNameQuery(nameWithPatterns, true, freeSearch));
         return Templates.substitute(templates.fetchDocumentLink, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getLinkFormatter(false)).sql);
     }
     
@@ -366,8 +368,8 @@ public class SQLAPI implements AutoCloseable {
         return new SQLResult(sql, concat(name.parameters, criteria.parameters));
     }
 
-    String searchFolderSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter) {
-        filter = getDBFilterExpression(schema.getFolderFields(), filter).intersect(getNameQuery(nameWithPatterns, true, true));
+    String searchFolderSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean freeSearch) {
+        filter = getDBFilterExpression(schema.getFolderFields(), filter).intersect(getNameQuery(nameWithPatterns, true, freeSearch));
         return Templates.substitute(templates.fetchFolder, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFolderFormatter()).sql);
     }
 
@@ -552,14 +554,25 @@ public class SQLAPI implements AutoCloseable {
         }
     }
     
-    public <T> Stream<T> getFolders(RepositoryPath path, Query filter, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
+    public <T> Stream<T> getFolders(RepositoryPath path, Query filter, boolean freeSearch, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
         LOG.entry(path, mapper);
+        if (path.find(RepositoryPath::isDocumentId).isPresent()) return Stream.empty();
         Optional<RepositoryPath> basePath = getBasePath(path, mapper);
         if (!basePath.isPresent()) return Stream.empty();
-        return LOG.exit(FluentStatement
-            .of(searchFolderSQL(basePath.get(), path, filter))
-            .execute(schema.datasource, mapper)
-        );
+        Stream<T> result = FluentStatement
+            .of(searchFolderSQL(basePath.get(), path, filter, freeSearch))
+            .execute(schema.datasource, mapper);
+        
+        if (freeSearch && mapper == GET_WORKSPACE) {
+            // Can't do this in simple map because of connection issues with deferred execution.
+            // However, not a big deal as the primary use case for this is fetching the links related to a
+            // particular document id; normally a small list.
+            List<T> buffer = result.map(link->(T)getFullPath((Workspace)link)).collect(Collectors.toList());
+            result.close();
+            result = buffer.stream();
+        }
+        
+        return LOG.exit(result);
     }
         
     public <T> Optional<T> getInfo(RepositoryPath name, Mapper<T> mapper) throws SQLException {
@@ -885,24 +898,24 @@ public class SQLAPI implements AutoCloseable {
         }
     }
     
-    public DocumentLink getFullPath(DocumentLink link) {
+    public <T extends VersionedRepositoryObject> T getFullPath(T link) {
         try {
             RepositoryPath path = getPathTo(Id.of(link.getId()))
                 .orElseThrow(()->new RuntimeException("bad link id"));
-            return link.setName(path);
+            return (T)link.setName(path);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
     
-    public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, boolean implicitRoot, Mapper<T> mapper) throws SQLException {
+    public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, boolean freeSearch, Mapper<T> mapper) throws SQLException {
         LOG.entry(path, filter, mapper);
         Optional<RepositoryPath> basePath = getBasePath(path, mapper);
         if (!basePath.isPresent()) return Stream.empty();
         Stream<T> result = FluentStatement
-            .of(searchDocumentLinkSQL(basePath.get(), path, filter, implicitRoot))
+            .of(searchDocumentLinkSQL(basePath.get(), path, filter, freeSearch))
             .execute(schema.datasource, mapper);
-        if (!implicitRoot && mapper == GET_LINK) {
+        if (freeSearch && mapper == GET_LINK) {
             // Can't do this in simple map because of connection issues with deferred execution.
             // However, not a big deal as the primary use case for this is fetching the links related to a
             // particular document id; normally a small list.

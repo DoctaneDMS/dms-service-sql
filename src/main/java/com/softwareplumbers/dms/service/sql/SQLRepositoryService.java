@@ -678,25 +678,10 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Stream<NamedRepositoryObject> catalogueById(RepositoryPath workspacePath, String documentId, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
-         LOG.entry(workspacePath, documentId, query, Options.loggable(options));
-        try (
-            SQLAPI db = dbFactory.getSQLAPI(); 
-        ) {
-            Stream<NamedRepositoryObject> links = db.getDocumentLinks(workspacePath.addDocumentId(documentId, null), query, false, SQLAPI.GET_LINK)
-                .filter(link->query.containsItem(link.toJson(this,0,1)))
-                .map(NamedRepositoryObject.class::cast);
-            return LOG.exit(links);
-        } catch (SQLException e) {
-            throw LOG.throwing(new RuntimeException(e));
-        }
-    }
-
-    @Override
     public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
         LOG.entry(path, Options.loggable(options));
         
-        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options)) {
+        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !path.find(RepositoryPath::isDocumentId).isPresent()) {
             if (path.isEmpty() || !path.find(RepositoryPath::isWildcard).isPresent()) {
                 path = path.addDocumentPath("*");
             }
@@ -705,10 +690,11 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Stream<NamedRepositoryObject> links = db.getDocumentLinks(path, query, true, SQLAPI.GET_LINK)
+            boolean freeSearch = Options.FREE_SEARCH.isIn(options);
+            Stream<NamedRepositoryObject> links = db.getDocumentLinks(path, query, freeSearch, SQLAPI.GET_LINK)
                 .filter(link->query.containsItem(link.toJson(this,1,0)))
                 .map(NamedRepositoryObject.class::cast);
-            Stream<NamedRepositoryObject> workspaces = db.getFolders(path, query, SQLAPI.GET_WORKSPACE)
+            Stream<NamedRepositoryObject> workspaces = db.getFolders(path, query, freeSearch, SQLAPI.GET_WORKSPACE)
                 .filter(link->query.containsItem(link.toJson(this,1,0)))
                 .map(NamedRepositoryObject.class::cast);
             return LOG.exit(Stream.concat(links, workspaces));
@@ -769,35 +755,15 @@ public class SQLRepositoryService implements RepositoryService {
         }
     }
 
-
-    
     @Override
-    public Stream<DocumentLink> listWorkspaces(String documentId, RepositoryPath pathFilter, Query filter, Options.Search... options) throws Exceptions.InvalidDocumentId {
-        LOG.entry(pathFilter, documentId, filter, Options.loggable(options));
-        if (pathFilter == null) pathFilter = RepositoryPath.ROOT;
-        try (
-            SQLAPI db = dbFactory.getSQLAPI(); 
-        ) {
-            Id id = Id.ofDocument(documentId);
-            Document document = db.getDocument(id, null, SQLAPI.GET_DOCUMENT)
-                .orElseThrow(()->LOG.throwing(new Exceptions.InvalidDocumentId(documentId)));
-            Stream<DocumentLink> links = db.getDocumentLinks(pathFilter.addDocumentId(documentId, null), filter, false, SQLAPI.GET_LINK)
-                .filter(link->filter.containsItem(link.toJson(this,1,0)));
-            return LOG.exit(links);
-        } catch (SQLException e) {
-            throw LOG.throwing(new RuntimeException(e));
-        }
-    }
-
-    @Override
-    public InputStream getData(Reference rfrnc, Optional<QualifiedName> partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
-        if (partName.isPresent()) throw new UnsupportedOperationException("Doesn't support a part name");
+    public InputStream getData(Reference rfrnc, RepositoryPath partName) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+        if (!partName.isEmpty()) throw new UnsupportedOperationException("Doesn't support a part name");
         return filestore.get(filestore.parseKey(rfrnc.version));
     }
 
     @Override
-    public void writeData(Reference rfrnc, Optional<QualifiedName> partName, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
-        if (partName.isPresent()) throw new UnsupportedOperationException("Doesn't support a part name");
+    public void writeData(Reference rfrnc, RepositoryPath partName, OutputStream out) throws Exceptions.InvalidReference, Exceptions.InvalidObjectName, IOException {
+        if (!partName.isEmpty()) throw new UnsupportedOperationException("Doesn't support a part name");
         OutputStreamConsumer.of(()->filestore.get(filestore.parseKey(rfrnc.version))).consume(out);
     }
     
