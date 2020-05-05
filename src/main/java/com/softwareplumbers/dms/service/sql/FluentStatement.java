@@ -503,18 +503,10 @@ public abstract class FluentStatement {
         switch (path.part.type) {
             case DOCUMENT_PATH:
                 VersionedElement docPart = (VersionedElement)path.part;
-                if (docPart.version != null) {
-                    return set("parent." + name, path.parent).set(name, docPart.name).set(name + ".version", docPart.version); 
-                } else {
-                    return set("parent." + name, path.parent).set(name, docPart.name).set(name + ".version", "");                    
-                }
+                return set("parent." + name, path.parent).set(name, docPart.name).set(name + ".version", docPart.version.orElse("")); 
             case DOCUMENT_ID:
                 DocumentIdElement docIdPart = (DocumentIdElement)path.part;
-                if (docIdPart.version != null) {
-                    return set("parent." + name, path.parent).set(name, docIdPart.id).set(name + ".version", docIdPart.version); 
-                } else {
-                    return set("parent." + name, path.parent).set(name, docIdPart.id).set(name + ".version", "");                     
-                }
+                return set("parent." + name, path.parent).set(name, docIdPart.id).set(name + ".version", docIdPart.version.orElse("")); 
             case OBJECT_ID:
                 IdElement idPart = (IdElement)path.part;
                 return set(name, idPart.id);

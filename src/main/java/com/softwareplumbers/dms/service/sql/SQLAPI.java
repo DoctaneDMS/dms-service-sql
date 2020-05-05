@@ -228,12 +228,12 @@ public class SQLAPI implements AutoCloseable {
             case DOCUMENT_PATH:
                 VersionedElement pathElement = (VersionedElement)name.part;
                 result = result.intersect(Query.from("name", Range.like(pathElement.name)));
-                result = result.intersect(Query.from("version", pathElement.version == null ? NULL_VERSION : Range.equals(Json.createValue(pathElement.version))));                
+                result = result.intersect(Query.from("version", pathElement.version.map(version->Range.equals(Json.createValue(version))).orElse(NULL_VERSION)));                
                 break;
             case DOCUMENT_ID:
                 DocumentIdElement docIdElement = (DocumentIdElement)name.part;
                 result = result.intersect(Query.from("reference", Query.from("id", Range.equals(Json.createValue(docIdElement.id)))));
-                result = result.intersect(Query.from("version", docIdElement.version == null ? NULL_VERSION : Range.equals(Json.createValue(docIdElement.version))));                
+                result = result.intersect(Query.from("version", docIdElement.version.map(version->Range.equals(Json.createValue(version))).orElse(NULL_VERSION)));                
                 break;
             case OBJECT_ID:
                 IdElement idElement = (IdElement)name.part;
@@ -333,7 +333,7 @@ public class SQLAPI implements AutoCloseable {
         Query query = getParameterizedNameQuery("path", path);
         int depth = path.getDocumentPath().size();
         // This test is only needed 
-        boolean versionRequested = path.part instanceof Versioned ? ((Versioned)path.part).getVersion() != null : false;
+        boolean versionRequested = path.part instanceof Versioned && ((Versioned)path.part).getVersion().isPresent();
         SQLResult criteria = query.toExpression(schema.getLinkFormatter(versionRequested));
         SQLResult name =  getParametrizedNameExpression(path);
         String sql = Templates.substitute(templates.fetchDocumentLink, name.sql, criteria.sql);

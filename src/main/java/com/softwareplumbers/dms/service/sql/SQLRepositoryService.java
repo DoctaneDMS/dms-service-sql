@@ -288,7 +288,7 @@ public class SQLRepositoryService implements RepositoryService {
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(workspaceName));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
-            RepositoryPath existingName = workspaceName.addDocumentId(reference.getId(), null);
+            RepositoryPath existingName = workspaceName.addDocumentId(reference.getId());
             Optional<DocumentLink> existing = db.getDocumentLink(existingName, SQLAPI.GET_LINK);
             if (existing.isPresent()) {
                 if (Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT.isIn(options)) {
@@ -560,7 +560,7 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            db.deleteObject(workspacePath.addDocumentId(documentId, null));
+            db.deleteObject(workspacePath.addDocumentId(documentId));
             db.commit();
             LOG.exit();
         } catch (SQLException e) {
