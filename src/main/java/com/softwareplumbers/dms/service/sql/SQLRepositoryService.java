@@ -566,7 +566,7 @@ public class SQLRepositoryService implements RepositoryService {
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         } catch (Exceptions.InvalidObjectName e) {
-            throw new Exceptions.InvalidDocumentId(documentId);
+            throw LOG.throwing(new Exceptions.InvalidDocumentId(documentId));
         }
     }
 

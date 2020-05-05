@@ -521,13 +521,13 @@ public class SQLAPI implements AutoCloseable {
         RepositoryPath path = RepositoryPath.ROOT.addId(parentId.toString()).addDocumentPath(name);
                 
         try (Stream<T> result = FluentStatement.of(this.getFolderSQL(path))
-            .set("basePath", getBasePath(path, mapper).orElseThrow(()->new InvalidWorkspace(path)).join("/"))    
+            .set("basePath", getBasePath(path, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(path))).join("/"))    
             .set("path", path)
             .execute(con, mapper)
         ) {
             return LOG.exit(
                 result.findFirst()
-                .orElseThrow(()->new RuntimeException("returned no results"))
+                .orElseThrow(()->LOG.throwing(new RuntimeException("returned no results")))
             );
         }
     }
@@ -535,15 +535,15 @@ public class SQLAPI implements AutoCloseable {
     public <T> Optional<T> getFolder(RepositoryPath name, Mapper<T> mapper) throws SQLException {
         LOG.entry(name);
         if (name.isEmpty() && (mapper == GET_ID || mapper == GET_VERIFIED_ID))
-            return Optional.of((T)Id.ROOT_ID);
+            return LOG.exit(Optional.of((T)Id.ROOT_ID));
         if (!name.isEmpty() && name.part.type == ElementType.OBJECT_ID && mapper == GET_ID) {
             // If all we need is the ID (because the mapper id GET_ID) and we have an Id on the path,
             // don't bother calling the database to verify.
             IdElement pathId = (IdElement)name.part;
-            return Optional.of((T)Id.of(pathId.id));
+            return LOG.exit(Optional.of((T)Id.of(pathId.id)));
         } else {
             Optional<RepositoryPath> basePath = getBasePath(name, mapper);
-            if (!basePath.isPresent()) return Optional.empty();
+            if (!basePath.isPresent()) return LOG.exit(Optional.empty());
             try (Stream<T> result = FluentStatement.of(getFolderSQL(name))
                 .set("basePath",basePath.get().join("/"))
                 .set("path", name)
@@ -556,9 +556,9 @@ public class SQLAPI implements AutoCloseable {
     
     public <T> Stream<T> getFolders(RepositoryPath path, Query filter, boolean freeSearch, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
         LOG.entry(path, mapper);
-        if (path.find(RepositoryPath::isDocumentId).isPresent()) return Stream.empty();
+        if (path.find(RepositoryPath::isDocumentId).isPresent()) return LOG.exit(Stream.empty());
         Optional<RepositoryPath> basePath = getBasePath(path, mapper);
-        if (!basePath.isPresent()) return Stream.empty();
+        if (!basePath.isPresent()) return LOG.exit(Stream.empty());
         Stream<T> result = FluentStatement
             .of(searchFolderSQL(basePath.get(), path, filter, freeSearch))
             .execute(schema.datasource, mapper);
@@ -578,7 +578,7 @@ public class SQLAPI implements AutoCloseable {
     public <T> Optional<T> getInfo(RepositoryPath name, Mapper<T> mapper) throws SQLException {
         LOG.entry(name);
         Optional<RepositoryPath> basePath = getBasePath(name, mapper);
-        if (!basePath.isPresent()) return Optional.empty();        
+        if (!basePath.isPresent()) return LOG.exit(Optional.empty());        
         try (Stream<T> results = FluentStatement.of(getInfoSQL(name))
             .set(1, basePath.get().join("/"))
             .set("path", name)
@@ -607,25 +607,25 @@ public class SQLAPI implements AutoCloseable {
     public <T> Optional<T> getOrCreateFolder(RepositoryPath path, boolean optCreate, Mapper<T> mapper) throws InvalidWorkspace, SQLException {
         LOG.entry(path, optCreate, mapper);
         
-        if (path.isEmpty()) return getFolder(path, mapper);
+        if (path.isEmpty()) return LOG.exit(getFolder(path, mapper));
 
         switch (path.part.type) {
             case OBJECT_ID:
-                return getFolder(path, mapper); // We can't create a folder without a name
+                return LOG.exit(getFolder(path, mapper)); // We can't create a folder without a name
             case DOCUMENT_PATH:
                 VersionedElement docPath = (VersionedElement)path.part;
                 if (path.parent.isEmpty()) {
-                    return getOrCreateFolder(Id.ROOT_ID, docPath.name, optCreate, mapper);
+                    return LOG.exit(getOrCreateFolder(Id.ROOT_ID, docPath.name, optCreate, mapper));
                 } else {
                     Optional<Id> parentId = getOrCreateFolder(path.parent, optCreate, GET_ID);
                     if (parentId.isPresent()) {
-                        return getOrCreateFolder(parentId.get(), docPath.name, optCreate, mapper);
+                        return LOG.exit(getOrCreateFolder(parentId.get(), docPath.name, optCreate, mapper));
                     } else {
-                        throw new InvalidWorkspace(path.parent);
+                        throw LOG.throwing(new InvalidWorkspace(path.parent));
                     }
                 }
             default:
-                throw new InvalidWorkspace(path);                    
+                throw LOG.throwing(new InvalidWorkspace(path));                    
         }
         
     }
@@ -637,7 +637,7 @@ public class SQLAPI implements AutoCloseable {
         Id folderId = getOrCreateFolder(targetPath.parent, optCreate, GET_ID)
             .orElseThrow(()->new InvalidWorkspace(targetPath.parent));
         
-        if (targetPath.part.type != ElementType.DOCUMENT_PATH) throw new InvalidObjectName(targetPath);
+        if (targetPath.part.type != ElementType.DOCUMENT_PATH) throw LOG.throwing(new InvalidObjectName(targetPath));
         
         VersionedElement docPart = (VersionedElement)targetPath.part;
         
@@ -668,30 +668,30 @@ public class SQLAPI implements AutoCloseable {
                     copyDocumentLink(srcPath, tgtPath, false, GET_ID);
                     break;
                 default:
-                    throw new RuntimeException("don't know how to copy " + child.type);
+                    throw LOG.throwing(new RuntimeException("don't know how to copy " + child.type));
             }
         }
         RepositoryPath resultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(docPart);
         try (Stream<T> results = FluentStatement.of(getFolderSQL(resultPath))
-            .set(1, getBasePath(resultPath, mapper).orElseThrow(()->new InvalidWorkspace(resultPath)).join("/"))
+            .set(1, getBasePath(resultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(resultPath))).join("/"))
             .set("path", resultPath)
             .execute(con, mapper)
         ) {        
             return LOG.exit(
                 results.findFirst()
-                .orElseThrow(()->new RuntimeException("returned no results")));
+                .orElseThrow(()->LOG.throwing(new RuntimeException("returned no results"))));
         }
     }
     
     public <T> T copyDocumentLink(RepositoryPath sourcePath, RepositoryPath targetPath, boolean optCreate, Mapper<T> mapper) throws SQLException, InvalidObjectName, InvalidWorkspace {
         LOG.entry(sourcePath, targetPath, optCreate, mapper);
         Id idSrc = getDocumentLink(sourcePath, GET_ID)
-            .orElseThrow(()->new InvalidObjectName(sourcePath));
+            .orElseThrow(()->LOG.throwing(new InvalidObjectName(sourcePath)));
         Id folderId = getOrCreateFolder(targetPath.parent, optCreate, GET_ID)
-            .orElseThrow(()->new InvalidWorkspace(targetPath.parent));
+            .orElseThrow(()->LOG.throwing(new InvalidWorkspace(targetPath.parent)));
         Id id = new Id();
         
-        if (targetPath.part.type != ElementType.DOCUMENT_PATH) throw new InvalidObjectName(targetPath);
+        if (targetPath.part.type != ElementType.DOCUMENT_PATH) throw LOG.throwing(new InvalidObjectName(targetPath));
         VersionedElement linkName = (VersionedElement)targetPath.part;
         
         FluentStatement.of(operations.createNode)
@@ -708,12 +708,13 @@ public class SQLAPI implements AutoCloseable {
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(linkName);
         
         try (Stream<T> results = LOG.exit(FluentStatement.of(getDocumentLinkSQL(shortResultPath))
-            .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->new InvalidWorkspace(shortResultPath)).join("/"))
+            .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
             .set("path", shortResultPath)
             .execute(con, mapper))) {       
         
-            return results.findFirst()
-                .orElseThrow(()->new RuntimeException("returned no results"));
+            return LOG.exit(results.findFirst()
+                .orElseThrow(()->new RuntimeException("returned no results"))
+            );
         }
     }
     
@@ -794,7 +795,7 @@ public class SQLAPI implements AutoCloseable {
             publishChild(child, newId);
         }
         
-        return newId;
+        return LOG.exit(newId);
     }
         
     public <T> T createDocumentLink(Id folderId, String name, Id docId, Id version, Mapper<T> mapper) throws SQLException, InvalidWorkspace {
@@ -816,7 +817,7 @@ public class SQLAPI implements AutoCloseable {
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).addDocumentPath(name);
         
         try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(shortResultPath))
-            .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->new InvalidWorkspace(shortResultPath)).join("/"))
+            .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
             .set("path", shortResultPath)
             .execute(con, mapper)) { 
         return LOG.exit(
@@ -837,7 +838,7 @@ public class SQLAPI implements AutoCloseable {
                 .execute(con);
                         
             try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(shortResultPath))
-            .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->new InvalidWorkspace(shortResultPath)).join("/"))
+            .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
             .set("path", shortResultPath)
                 .execute(con, mapper)
             ) {
@@ -860,7 +861,7 @@ public class SQLAPI implements AutoCloseable {
             .execute(con);
         if (count == 0) return Optional.empty();
         try (Stream<T> result = FluentStatement.of(getFolderSQL(shortResultPath))
-            .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->new InvalidWorkspace(shortResultPath)).join("/"))
+            .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
             .set("path", shortResultPath)
             .execute(con, mapper)
         ) {
@@ -875,6 +876,7 @@ public class SQLAPI implements AutoCloseable {
         FluentStatement.of(operations.lockVersions)
             .set(1, folderId)
             .execute(con);
+        LOG.exit();
     }
     
     public void unlockVersions(Id folderId) throws SQLException {
@@ -882,6 +884,7 @@ public class SQLAPI implements AutoCloseable {
         FluentStatement.of(operations.unlockVersions)
             .set(1, folderId)
             .execute(con);
+        LOG.exit();
     }
 
     public <T> Optional<T> getDocumentLink(RepositoryPath path, Mapper<T> mapper) throws SQLException {
@@ -901,7 +904,7 @@ public class SQLAPI implements AutoCloseable {
     public <T extends VersionedRepositoryObject> T getFullPath(T link) {
         try {
             RepositoryPath path = getPathTo(Id.of(link.getId()))
-                .orElseThrow(()->new RuntimeException("bad link id"));
+                .orElseThrow(()->LOG.throwing(new RuntimeException("bad link id")));
             return (T)link.setName(path);
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -911,7 +914,7 @@ public class SQLAPI implements AutoCloseable {
     public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, boolean freeSearch, Mapper<T> mapper) throws SQLException {
         LOG.entry(path, filter, mapper);
         Optional<RepositoryPath> basePath = getBasePath(path, mapper);
-        if (!basePath.isPresent()) return Stream.empty();
+        if (!basePath.isPresent()) return LOG.exit(Stream.empty());
         Stream<T> result = FluentStatement
             .of(searchDocumentLinkSQL(basePath.get(), path, filter, freeSearch))
             .execute(schema.datasource, mapper);
@@ -923,16 +926,17 @@ public class SQLAPI implements AutoCloseable {
             result.close();
             result = buffer.stream();
         }
-        return result;
+        return LOG.exit(result);
     }
     
     public void deleteObject(RepositoryPath path) throws SQLException, InvalidObjectName, InvalidWorkspace, InvalidWorkspaceState {
         LOG.entry(path);
-        Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->new InvalidWorkspace(path.parent));
-        if (parent.getState() != Workspace.State.Open) throw new InvalidWorkspaceState(path.parent, parent.getState());
+        Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new InvalidWorkspace(path.parent)));
+        if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new InvalidWorkspaceState(path.parent, parent.getState()));
         Id objectId = getInfo(path, GET_ID)
-            .orElseThrow(()->new InvalidObjectName(path));
+            .orElseThrow(()->LOG.throwing(new InvalidObjectName(path)));
         FluentStatement.of(operations.deleteObject).set(1, objectId).execute(con);
+        LOG.exit();
     }
     
     public SQLAPI(DataSource ds) throws SQLException {
