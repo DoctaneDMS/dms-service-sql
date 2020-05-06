@@ -617,8 +617,8 @@ public class SQLRepositoryService implements RepositoryService {
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
             DocumentLink link = db.getDocumentLink(path, SQLAPI.GET_LINK)
-                .orElseThrow(()->new Exceptions.InvalidObjectName(path));
-            return LOG.exit(filestore.get(filestore.parseKey(link.getVersion())));
+                .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
+            return LOG.exit(filestore.get(filestore.parseKey(link.getReference().version)));
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
