@@ -768,27 +768,32 @@ public class SQLRepositoryService implements RepositoryService {
     }
     
     @Override
-    public VersionedRepositoryObject publish(RepositoryPath path, String name) throws Exceptions.InvalidObjectName {
+    public DocumentLink publishDocumentLink(RepositoryPath path, String name, JsonObject metadata) throws Exceptions.InvalidObjectName, Exceptions.InvalidVersionName {
         try (
             SQLAPI db = dbFactory.getSQLAPI(); 
         ) {
-            Info info = db.getInfo(path, SQLAPI.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
+            Info info = db.getInfo(path, SQLAPI.GET_INFO).orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
+            if (info.type != RepositoryObject.Type.DOCUMENT_LINK) throw LOG.throwing(new Exceptions.InvalidObjectName(path));
             RepositoryPath published = RepositoryPath.ROOT.addId(db.publish(info.id, name).toString());
-            VersionedRepositoryObject result;
-            switch (info.type) {
-                case DOCUMENT_LINK:
-                    result = db.getDocumentLink(published, SQLAPI.GET_LINK).orElseThrow(()->new RuntimeException("Failed to publish"));
-                    break;
-                case WORKSPACE:
-                    result = db.getFolder(published, SQLAPI.GET_WORKSPACE).orElseThrow(()->new RuntimeException("Failed to publish")); 
-                    break;
-                default:
-                    throw new RuntimeException("unknown type " + info.type);
-            }
+            DocumentLink result = db.getDocumentLink(published, SQLAPI.GET_LINK).orElseThrow(()->new RuntimeException("Failed to publish"));
             return LOG.exit(result);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
     }
-        
+
+    @Override
+    public Workspace publishWorkspace(RepositoryPath path, String name, JsonObject metadata) throws Exceptions.InvalidWorkspace, Exceptions.InvalidVersionName {
+        try (
+            SQLAPI db = dbFactory.getSQLAPI(); 
+        ) {
+            Info info = db.getInfo(path, SQLAPI.GET_INFO).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path)));
+            if (info.type != RepositoryObject.Type.WORKSPACE) throw LOG.throwing(new Exceptions.InvalidWorkspace(path));
+            RepositoryPath published = RepositoryPath.ROOT.addId(db.publish(info.id, name).toString());
+            Workspace result = db.getFolder(published, SQLAPI.GET_WORKSPACE).orElseThrow(()->new RuntimeException("Failed to publish"));
+            return LOG.exit(result);
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
+    }    
 }
