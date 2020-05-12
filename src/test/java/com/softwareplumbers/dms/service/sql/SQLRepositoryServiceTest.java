@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.sql.FluentStatement;
 import java.util.UUID;
 
 import org.junit.Before;

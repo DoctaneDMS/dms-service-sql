@@ -5,6 +5,8 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.sql.Mapper;
+import com.softwareplumbers.common.sql.FluentStatement;
 import com.softwareplumbers.common.abstractquery.Param;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
@@ -107,7 +109,7 @@ public class SQLAPI implements AutoCloseable {
     public Optional<RepositoryPath> getBasePath(Id id) throws SQLException {
         try (Stream<RepositoryPath> names = FluentStatement
             .of(operations.fetchPathToId)
-            .set(1, id)
+            .set(Types.ID, 1, id)
             .execute(con, rs->RepositoryPath.valueOf(rs.getString(1)))
         ) {
 
@@ -369,7 +371,7 @@ public class SQLAPI implements AutoCloseable {
             return LOG.exit(Optional.of(RepositoryPath.ROOT));
         else try (Stream<RepositoryPath> results = FluentStatement
                 .of(operations.fetchPathToId)
-                .set(1, id)
+                .set(Types.ID, 1, id)
                 .execute(con, rs->RepositoryPath.valueOf(rs.getString(1)))) {
             return LOG.exit(
                 results.findFirst()
@@ -389,7 +391,7 @@ public class SQLAPI implements AutoCloseable {
         Optional<String> match = Optional.empty();
         try (Stream<String> matches = FluentStatement
             .of(operations.fetchLastNameLike)
-            .set(1, id)
+            .set(Types.ID, 1, id)
             .set(2, baseName+"%"+ext)
             .execute(con, rs->{ 
                 String name = rs.getString(1); 
@@ -426,16 +428,16 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(mediaType, length, digest, metadata);
         if (metadata == null) metadata = JsonObject.EMPTY_JSON_OBJECT;
         FluentStatement.of(operations.createVersion)
-            .set(1, id)
-            .set(2, version)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, version)
             .set(3, mediaType)
             .set(4, length)
             .set(5, digest)
             .set(6, clobWriter(metadata))
             .execute(con);             
         FluentStatement.of(operations.createDocument)
-            .set(1, id)
-            .set(2, version)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, version)
             .execute(con);  
         LOG.exit();        
     }
@@ -443,16 +445,16 @@ public class SQLAPI implements AutoCloseable {
     public void createVersion(Id id, Id version, String mediaType, long length, byte[] digest, JsonObject metadata) throws SQLException {
         LOG.entry(mediaType, length, digest, metadata);
         FluentStatement.of(operations.createVersion)
-            .set(1, id)
-            .set(2, version)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, version)
             .set(3, mediaType)
             .set(4, length)
             .set(5, digest)
             .set(6, clobWriter(metadata))
             .execute(con);             
         FluentStatement.of(operations.updateDocument)
-            .set(2, id)
-            .set(1, version)
+            .set(Types.ID, 2, id)
+            .set(Types.ID, 1, version)
             .execute(con);  
         LOG.exit();        
     }
@@ -460,11 +462,11 @@ public class SQLAPI implements AutoCloseable {
     public <T> Optional<T> getDocument(Id id, Id version, Mapper<T> mapper) throws SQLException {
         LOG.entry(id, version , mapper);
         if (version == null) {
-            try (Stream<T> result = FluentStatement.of(operations.fetchLatestDocument).set(1, id).execute(con, mapper)) {
+            try (Stream<T> result = FluentStatement.of(operations.fetchLatestDocument).set(Types.ID, 1, id).execute(con, mapper)) {
                 return LOG.exit(result.findFirst());
             }
         } else {
-            try (Stream<T> result = FluentStatement.of(operations.fetchDocument).set(1, id).set(2, version).execute(con, mapper)) {
+            try (Stream<T> result = FluentStatement.of(operations.fetchDocument).set(Types.ID, 1, id).set(Types.ID, 2, version).execute(con, mapper)) {
                 return LOG.exit(result.findFirst());
             }
         }
@@ -472,7 +474,7 @@ public class SQLAPI implements AutoCloseable {
     
     public <T> Stream<T> getDocuments(Id id, Query query, Mapper<T> mapper) throws SQLException {
         LOG.entry(id, query, mapper);
-        Stream<T> result = FluentStatement.of(getDocumentSearchHistorySQL(query)).set(1, id).execute(schema.datasource, mapper);
+        Stream<T> result = FluentStatement.of(getDocumentSearchHistorySQL(query)).set(Types.ID, 1, id).execute(schema.datasource, mapper);
         return LOG.exit(result);
     }
     
@@ -497,13 +499,13 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(parentId, name, state, metadata);
         Id id = new Id();
         FluentStatement.of(operations.createNode)
-            .set(1, id)
-            .set(2, parentId)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, parentId)
             .set(3, name)
             .set(4, RepositoryObject.Type.WORKSPACE.toString())
             .execute(con);
         FluentStatement.of(operations.createFolder)
-            .set(1, id)
+            .set(Types.ID, 1, id)
             .set(2, state.toString())
             .set(3, clobWriter(metadata))
             .execute(con);
@@ -512,7 +514,7 @@ public class SQLAPI implements AutoCloseable {
                 
         try (Stream<T> result = FluentStatement.of(this.getFolderSQL(path))
             .set("basePath", getBasePath(path, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(path))).join("/"))    
-            .set("path", path)
+            .set(Types.PATH, "path", path)
             .execute(con, mapper)
         ) {
             return LOG.exit(
@@ -536,7 +538,7 @@ public class SQLAPI implements AutoCloseable {
             if (!basePath.isPresent()) return LOG.exit(Optional.empty());
             try (Stream<T> result = FluentStatement.of(getFolderSQL(name))
                 .set("basePath",basePath.get().join("/"))
-                .set("path", name)
+                .set(Types.PATH, "path", name)
                 .execute(con, mapper)
             ) { 
                 return LOG.exit(result.findFirst());
@@ -571,7 +573,7 @@ public class SQLAPI implements AutoCloseable {
         if (!basePath.isPresent()) return LOG.exit(Optional.empty());        
         try (Stream<T> results = FluentStatement.of(getInfoSQL(name))
             .set(1, basePath.get().join("/"))
-            .set("path", name)
+            .set(Types.PATH, "path", name)
             .execute(con, mapper)) {
             return LOG.exit(results.findFirst());
         }
@@ -580,7 +582,7 @@ public class SQLAPI implements AutoCloseable {
     public Stream<Info> getChildren(Id parentId) throws SQLException {
         LOG.entry(parentId);
         return LOG.exit(FluentStatement.of(operations.fetchChildren)
-            .set(1, parentId)
+            .set(Types.ID, 1, parentId)
             .execute(con, GET_INFO)
         );        
     }
@@ -633,18 +635,18 @@ public class SQLAPI implements AutoCloseable {
         
         Id id = new Id();
         FluentStatement.of(operations.createNode)
-            .set(1, id)
-            .set(2, folderId)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, folderId)
             .set(3, docPart.name)
             .set(4, RepositoryObject.Type.WORKSPACE.toString())
             .execute(con);
         FluentStatement.of(operations.copyFolder)
-            .set(1, id)
-            .set(2, idSrc)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, idSrc)
             .execute(con);
         
         Iterable<Info> children = FluentStatement.of(operations.fetchChildren)
-            .set(1, idSrc)
+            .set(Types.ID, 1, idSrc)
             .execute(con, GET_INFO)
             .collect(Collectors.toList());
         for (Info child : children) {
@@ -664,7 +666,7 @@ public class SQLAPI implements AutoCloseable {
         RepositoryPath resultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(docPart);
         try (Stream<T> results = FluentStatement.of(getFolderSQL(resultPath))
             .set(1, getBasePath(resultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(resultPath))).join("/"))
-            .set("path", resultPath)
+            .set(Types.PATH, "path", resultPath)
             .execute(con, mapper)
         ) {        
             return LOG.exit(
@@ -685,21 +687,21 @@ public class SQLAPI implements AutoCloseable {
         VersionedElement linkName = (VersionedElement)targetPath.part;
         
         FluentStatement.of(operations.createNode)
-            .set(1, id)
-            .set(2, folderId)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, folderId)
             .set(3, linkName.name)
             .set(4, RepositoryObject.Type.DOCUMENT_LINK.toString())
             .execute(con);
         FluentStatement.of(operations.copyLink)
-            .set(1, id)
-            .set(2, idSrc)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, idSrc)
             .execute(con);
         
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(linkName);
         
         try (Stream<T> results = LOG.exit(FluentStatement.of(getDocumentLinkSQL(shortResultPath))
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
-            .set("path", shortResultPath)
+            .set(Types.PATH, "path", shortResultPath)
             .execute(con, mapper))) {       
         
             return LOG.exit(results.findFirst()
@@ -712,20 +714,20 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(nodeId, newParentId);
         Id newId = new Id();
         FluentStatement.of(operations.copyNode)
-            .set(1, newId)
-            .set(2, newParentId)
-            .set(3, nodeId)
+            .set(Types.ID, 1, newId)
+            .set(Types.ID, 2, newParentId)
+            .set(Types.ID, 3, nodeId)
             .execute(con); 
         FluentStatement.of(operations.copyLink)
-            .set(1, newId)
-            .set(2, nodeId)
+            .set(Types.ID, 1, newId)
+            .set(Types.ID, 2, nodeId)
             .execute(con);
         FluentStatement.of(operations.copyFolder)
-            .set(1, newId)
-            .set(2, nodeId)
+            .set(Types.ID, 1, newId)
+            .set(Types.ID, 2, nodeId)
             .execute(con);
         Iterable<Id> children = FluentStatement.of(operations.fetchChildren)
-            .set(1, nodeId)
+            .set(Types.ID, 1, nodeId)
             .execute(con, GET_ID)
             .collect(Collectors.toList());
         for (Id child : children) {
@@ -738,20 +740,20 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(nodeId, newParentId);
         Id newId = new Id();
         FluentStatement.of(operations.copyNode)
-            .set(1, newId)
-            .set(2, newParentId)
-            .set(3, nodeId)
+            .set(Types.ID, 1, newId)
+            .set(Types.ID, 2, newParentId)
+            .set(Types.ID, 3, nodeId)
             .execute(con); 
         FluentStatement.of(operations.publishLink)
-            .set(1, newId)
-            .set(2, nodeId)
+            .set(Types.ID, 1, newId)
+            .set(Types.ID, 2, nodeId)
             .execute(con);
         FluentStatement.of(operations.copyFolder)
-            .set(1, newId)
-            .set(2, nodeId)
+            .set(Types.ID, 1, newId)
+            .set(Types.ID, 2, nodeId)
             .execute(con);
         Iterable<Id> children = FluentStatement.of(operations.fetchChildren)
-            .set(1, nodeId)
+            .set(Types.ID, 1, nodeId)
             .execute(con, GET_ID)
             .collect(Collectors.toList());
         for (Id child : children) {
@@ -764,21 +766,21 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(nodeId, version);
         Id newId = new Id();
         FluentStatement.of(operations.publishNode)
-            .set(1, newId)
+            .set(Types.ID, 1, newId)
             .set(2, version)
-            .set(3, nodeId)
+            .set(Types.ID, 3, nodeId)
             .execute(con); 
         int links = FluentStatement.of(operations.publishLink)
-            .set(1, newId)
-            .set(2, nodeId)
+            .set(Types.ID, 1, newId)
+            .set(Types.ID, 2, nodeId)
             .execute(con);
         int folders = FluentStatement.of(operations.copyFolder)
-            .set(1, newId)
-            .set(2, nodeId)
+            .set(Types.ID, 1, newId)
+            .set(Types.ID, 2, nodeId)
             .execute(con);
         
         Iterable<Id> children = FluentStatement.of(operations.fetchChildren)
-            .set(1, nodeId)
+            .set(Types.ID, 1, nodeId)
             .execute(con, GET_ID)
             .collect(Collectors.toList());
         for (Id child : children) {
@@ -792,15 +794,15 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(folderId, name, docId, version);
         Id id = new Id();
         FluentStatement.of(operations.createNode)
-            .set(1, id)
-            .set(2, folderId)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, folderId)
             .set(3, name)
             .set(4, RepositoryObject.Type.DOCUMENT_LINK.toString())
             .execute(con);
         FluentStatement.of(operations.createLink)
-            .set(1, id)
-            .set(2, docId)
-            .set(3, version)
+            .set(Types.ID, 1, id)
+            .set(Types.ID, 2, docId)
+            .set(Types.ID, 3, version)
             .set(4, false)
             .execute(con);
         
@@ -808,7 +810,7 @@ public class SQLAPI implements AutoCloseable {
         
         try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(shortResultPath))
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
-            .set("path", shortResultPath)
+            .set(Types.PATH, "path", shortResultPath)
             .execute(con, mapper)) { 
         return LOG.exit(
             results.findFirst()
@@ -822,14 +824,14 @@ public class SQLAPI implements AutoCloseable {
         Optional<Info> info = getInfo(shortResultPath, GET_INFO);
         if (info.isPresent()) {
             FluentStatement.of(operations.updateLink)
-                .set(1, docId)
-                .set(2, version)
-                .set(3, info.get().id)
+                .set(Types.ID, 1, docId)
+                .set(Types.ID, 2, version)
+                .set(Types.ID, 3, info.get().id)
                 .execute(con);
                         
             try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(shortResultPath))
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
-            .set("path", shortResultPath)
+            .set(Types.PATH, "path", shortResultPath)
                 .execute(con, mapper)
             ) {
                 return LOG.exit(
@@ -847,12 +849,12 @@ public class SQLAPI implements AutoCloseable {
         int count = FluentStatement.of(operations.updateFolder)
             .set(1, state.toString())
             .set(2, metadata)
-            .set(3, folderId)
+            .set(Types.ID, 3, folderId)
             .execute(con);
         if (count == 0) return Optional.empty();
         try (Stream<T> result = FluentStatement.of(getFolderSQL(shortResultPath))
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
-            .set("path", shortResultPath)
+            .set(Types.PATH, "path", shortResultPath)
             .execute(con, mapper)
         ) {
             return LOG.exit(
@@ -864,7 +866,7 @@ public class SQLAPI implements AutoCloseable {
     public void lockVersions(Id folderId) throws SQLException {
         LOG.entry(folderId);
         FluentStatement.of(operations.lockVersions)
-            .set(1, folderId)
+            .set(Types.ID, 1, folderId)
             .execute(con);
         LOG.exit();
     }
@@ -872,7 +874,7 @@ public class SQLAPI implements AutoCloseable {
     public void unlockVersions(Id folderId) throws SQLException {
         LOG.entry(folderId);
         FluentStatement.of(operations.unlockVersions)
-            .set(1, folderId)
+            .set(Types.ID, 1, folderId)
             .execute(con);
         LOG.exit();
     }
@@ -884,7 +886,7 @@ public class SQLAPI implements AutoCloseable {
         try (Stream<T> result = FluentStatement
             .of(getDocumentLinkSQL(path))
             .set(1, basePath.get().join("/"))
-            .set("path", path)
+            .set(Types.PATH, "path", path)
             .execute(con, mapper)
         ) {
             return LOG.exit(result.findFirst());
@@ -925,7 +927,7 @@ public class SQLAPI implements AutoCloseable {
         if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new InvalidWorkspaceState(path.parent, parent.getState()));
         Id objectId = getInfo(path, GET_ID)
             .orElseThrow(()->LOG.throwing(new InvalidObjectName(path)));
-        FluentStatement.of(operations.deleteObject).set(1, objectId).execute(con);
+        FluentStatement.of(operations.deleteObject).set(Types.ID, 1, objectId).execute(con);
         LOG.exit();
     }
     

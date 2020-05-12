@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.softwareplumbers.dms.service.sql;
+package com.softwareplumbers.common.sql;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

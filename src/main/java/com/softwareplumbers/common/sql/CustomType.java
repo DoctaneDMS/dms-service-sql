@@ -3,9 +3,9 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.softwareplumbers.dms.service.sql;
+package com.softwareplumbers.common.sql;
 
-import java.sql.ResultSet;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 /**
@@ -13,6 +13,6 @@ import java.sql.SQLException;
  * @author jonathan
  */
 @FunctionalInterface
-public interface Mapper<T> {
-    public T map(ResultSet rs) throws SQLException;
+public interface CustomType<T> {
+    void set(PreparedStatement statement, int index, T value) throws SQLException;
 }

@@ -59,7 +59,7 @@ public class Id {
         return Arrays.hashCode(data);
     }
     
-    byte[] getBytes()  {
+    public byte[] getBytes()  {
         return data;
     }
     

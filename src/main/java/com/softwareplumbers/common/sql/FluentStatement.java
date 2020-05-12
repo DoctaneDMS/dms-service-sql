@@ -3,20 +3,14 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package com.softwareplumbers.dms.service.sql;
+package com.softwareplumbers.common.sql;
 
-import com.softwareplumbers.common.immutablelist.QualifiedName;
-import com.softwareplumbers.dms.RepositoryPath;
-import com.softwareplumbers.dms.RepositoryPath.DocumentIdElement;
-import com.softwareplumbers.dms.RepositoryPath.IdElement;
-import com.softwareplumbers.dms.RepositoryPath.VersionedElement;
 import java.io.Writer;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import javax.json.Json;
@@ -257,29 +251,31 @@ public abstract class FluentStatement {
         } 
     }
     
-    private static class IdParam extends NamedParam<Id> {
-        public IdParam(FluentStatement base, String name, Id value) { super(base, name, value); }
+    private static class CustomTypeParam<T> extends NamedParam<T> {
+        private final CustomType<T> type;
+        public CustomTypeParam(FluentStatement base, String name, CustomType<T> type, T value) { super(base, name, value); this.type = type; }
         @Override
-        protected void buildStatement(PreparedStatement statement,  Map<String, List<Integer>> parameters) throws SQLException {
+        protected void buildStatement(PreparedStatement statement, Map<String, List<Integer>> parameters) throws SQLException {
             base.buildStatement(statement, parameters);
             LOG.debug("setting param {} to {}", name, value);
             for (int index : getIndexes(name, parameters)) {
-                if (value == null) statement.setNull(index, Types.BINARY);
-                else statement.setBytes(index+1, value.getBytes());
-            }
-        } 
+                type.set(statement, index+1, value);
+            }            
+        }
     }
-
-    private static class IdIndexedParam extends IndexedParam<Id> {
-        public IdIndexedParam(FluentStatement base, int index, Id value) { super(base, index, value); }
+    
+    private static class CustomTypeIndexedParam<T> extends IndexedParam<T> {
+        private final CustomType<T> type;
+        public CustomTypeIndexedParam(FluentStatement base, int index, CustomType<T> type, T value) { super(base, index, value); this.type = type; }
         @Override
         protected void buildStatement(PreparedStatement statement,  Map<String, List<Integer>> parameters) throws SQLException {
             base.buildStatement(statement, parameters);
             LOG.debug("setting param {} to {}", index, value);
-            if (value == null) statement.setNull(index, Types.BINARY);
-            else statement.setBytes(index, value.getBytes());
-        } 
+            type.set(statement, index, value);
+        }         
     }
+    
+
 
     private static class ClobParam extends NamedParam<Consumer<Writer>> {
         public ClobParam(FluentStatement base, String name, Consumer<Writer> value) { super(base, name, value); }
@@ -489,48 +485,6 @@ public abstract class FluentStatement {
      */
     public FluentStatement setNull(String name) { return new NullParam(this, name, Types.NULL); }
     
-    /** Set several parameters to values supplied by a qualified name.
-     * 
-     * Will set the parameter at the index give to the value of name.part (the last part of the qualified name).
-     * Sets following parameters to successive parent parts of the qualified name.
-     * 
-     * @param name Name of parameter to set
-     * @param path Value to which we will set the parameter
-     * @return A fluent statement for further manipulation/execution
-     */
-    public FluentStatement set(String name, RepositoryPath path) { 
-        if (path.isEmpty()) return set(name, Id.ROOT_ID);
-        switch (path.part.type) {
-            case DOCUMENT_PATH:
-                VersionedElement docPart = (VersionedElement)path.part;
-                return set("parent." + name, path.parent).set(name, docPart.name).set(name + ".version", docPart.version.orElse("")); 
-            case DOCUMENT_ID:
-                DocumentIdElement docIdPart = (DocumentIdElement)path.part;
-                return set("parent." + name, path.parent).set(name, docIdPart.id).set(name + ".version", docIdPart.version.orElse("")); 
-            case OBJECT_ID:
-                IdElement idPart = (IdElement)path.part;
-                return set(name, idPart.id);
-            default:
-                return set("parent." + name, path.parent);
-        }
-    }
-
-    /** Set the given parameter to the given value
-     * 
-     * @param name Name of parameter to set
-     * @param id Value to which we will set the parameter
-     * @return A fluent statement for further manipulation/execution
-     */
-    public FluentStatement set(String name, Id id) { return new IdParam(this, name, id); }
-
-    /** Set the given parameter to the given value
-     * 
-     * @param index Index of parameter to set
-     * @param id Value to which we will set the parameter
-     * @return A fluent statement for further manipulation/execution
-     */
-    public FluentStatement set(int index, Id id) { return new IdIndexedParam(this, index, id); }
-
     /** Set the given parameter to the given value
      * 
      * @param name Name of parameter to set
@@ -547,40 +501,18 @@ public abstract class FluentStatement {
      */
     public FluentStatement set(int index, JsonObject value) { return new ClobIndexedParam(this, index, out-> { try (JsonWriter writer = Json.createWriter(out)) { writer.write(value);} }); }
 
-    /** Set optional parameter value
-     * 
-     * @param <T> Type of value to set
-     * @param index Index of parameter to set
-     * @param optValue Value to set
-     * @return  A fluent statement for further manipulation/execution
-     */
-    public <T> FluentStatement set(String name, Optional<T> optValue) {
-        if (optValue.isPresent()) {
-            T value = optValue.get();
-            if (value instanceof String) return set(name, (String)value);
-            if (value instanceof Id) return set(name, (Id)value);
-            if (value instanceof RepositoryPath) return set(name, (RepositoryPath)value);
-            if (value instanceof byte[]) return set(name, (byte[])value);
-            if (value instanceof Boolean) return set(name, (Boolean)value);
-            if (value instanceof Long) return set(name, (Long)value);
-            throw new RuntimeException("unsupported optional type: " + value.getClass());
-        }
-        return this;
+    
+    public <T> FluentStatement set(CustomType<T> type, String name, T value) {
+        return new CustomTypeParam<T>(this, name, type, value);
     }
     
-    private static int countParameters(int initCount, RepositoryPath.Element element) {
-        switch (element.type) {
-            case DOCUMENT_PATH: 
-                return initCount+2;
-            case DOCUMENT_ID:
-                DocumentIdElement docId = (DocumentIdElement)element;
-                return docId.version == null ? initCount+1 : initCount+2;
-            default: 
-                return initCount+1;
-        }
+    public <T> FluentStatement set(CustomType<T> type, int index, T value) {
+        return new CustomTypeIndexedParam<T>(this, index, type, value);
+    }
+
+    public <T> FluentStatement set(CompositeType<T> type, String name, T value) {
+        return type.set(this, name, value);
     }
     
-    public static int countParameters(RepositoryPath path) {
-        return path.apply(0, FluentStatement::countParameters);
-    }
+
 }
