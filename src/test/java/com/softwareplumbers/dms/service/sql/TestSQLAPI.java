@@ -5,15 +5,13 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
-
-import com.softwareplumbers.common.abstractquery.visitor.Visitors.SQLResult;
-import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
 import com.softwareplumbers.dms.Exceptions.InvalidObjectName;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.Workspace;
+import com.softwareplumbers.dms.service.sql.SQLAPI.GeneratedSQL;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Optional;
@@ -63,126 +61,126 @@ public class TestSQLAPI {
     @Test 
     public void testGetDocumentLinkSQL() throws SQLException {
         try (SQLAPI api = factory.getSQLAPI()) {
-            SQLResult l0 = api.getDocumentLinkSQL(TEST_PATH_1);
+            GeneratedSQL l0 = api.getDocumentLinkSQL(TEST_PATH_1);
             System.out.println(l0.sql);
             assertTrue(l0.sql.contains("? || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l0.sql.contains("VIEW_LINKS T0"));
             assertTrue(l0.sql.contains("WHERE T0.NAME=? AND T0.PARENT_ID=? AND T0.VERSION=?"));
-            assertEquals("basePath", l0.parameters.get(0));
-            assertEquals("path", l0.parameters.get(1));
-            assertEquals("parent.path", l0.parameters.get(2));
-            assertEquals("path.version", l0.parameters.get(3));
-            SQLResult l1 = api.getDocumentLinkSQL(TEST_PATH_2);
+            assertEquals("basePath", l0.parameters[0]);
+            assertEquals("path", l0.parameters[1]);
+            assertEquals("parent.path", l0.parameters[2]);
+            assertEquals("path.version", l0.parameters[3]);
+            GeneratedSQL l1 = api.getDocumentLinkSQL(TEST_PATH_2);
             System.out.println(l1.sql);
             assertTrue(l1.sql.contains("? || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l1.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
             assertTrue(l1.sql.contains("WHERE T0.NAME=? AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.VERSION=?"));
-            assertEquals("basePath", l0.parameters.get(0));
-            assertEquals("path", l1.parameters.get(1));
-            assertEquals("parent.path", l1.parameters.get(2));
-            assertEquals("parent.parent.path", l1.parameters.get(3));
-            assertEquals("parent.path.version", l1.parameters.get(4));
-            assertEquals("path.version", l1.parameters.get(5));
-            SQLResult l2 = api.getDocumentLinkSQL(TEST_PATH_3);
+            assertEquals("basePath", l0.parameters[0]);
+            assertEquals("path", l1.parameters[1]);
+            assertEquals("parent.path", l1.parameters[2]);
+            assertEquals("parent.parent.path", l1.parameters[3]);
+            assertEquals("parent.path.version", l1.parameters[4]);
+            assertEquals("path.version", l1.parameters[5]);
+            GeneratedSQL l2 = api.getDocumentLinkSQL(TEST_PATH_3);
             System.out.println(l2.sql);
             assertTrue(l2.sql.contains("? || '/' || T2.NAME || CASEWHEN(T2.VERSION='', '', '@' || T2.VERSION) || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l2.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID INNER JOIN VIEW_FOLDERS T2 ON T1.PARENT_ID = T2.ID"));
             assertTrue(l2.sql.contains("WHERE T0.NAME=? AND T1.NAME=? AND T2.NAME=? AND T2.PARENT_ID=? AND T2.VERSION=? AND T1.VERSION=? AND T0.VERSION=?"));
-            assertEquals("basePath", l0.parameters.get(0));
-            assertEquals("path", l2.parameters.get(1));
-            assertEquals("parent.path", l2.parameters.get(2));
-            assertEquals("parent.parent.path", l2.parameters.get(3));
-            assertEquals("parent.parent.parent.path", l2.parameters.get(4));
-            assertEquals("parent.parent.path.version", l2.parameters.get(5));
-            assertEquals("parent.path.version", l2.parameters.get(6));
-            assertEquals("path.version", l2.parameters.get(7));
+            assertEquals("basePath", l0.parameters[0]);
+            assertEquals("path", l2.parameters[1]);
+            assertEquals("parent.path", l2.parameters[2]);
+            assertEquals("parent.parent.path", l2.parameters[3]);
+            assertEquals("parent.parent.parent.path", l2.parameters[4]);
+            assertEquals("parent.parent.path.version", l2.parameters[5]);
+            assertEquals("parent.path.version", l2.parameters[6]);
+            assertEquals("path.version", l2.parameters[7]);
         }
     }
       
     @Test 
     public void testGetDocumentLinkByIdSQL() throws SQLException {
         try (SQLAPI api = factory.getSQLAPI()) {
-            SQLResult l0 = api.getDocumentLinkSQL(TEST_PATH_ID0);
+            GeneratedSQL l0 = api.getDocumentLinkSQL(TEST_PATH_ID0);
             System.out.println(l0.sql);
             assertTrue(l0.sql.contains("? || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l0.sql.contains("VIEW_LINKS T0"));
             assertTrue(l0.sql.contains("WHERE T0.PARENT_ID=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
-            assertEquals("basePath", l0.parameters.get(0));
-            assertEquals("parent.path", l0.parameters.get(1));
-            assertEquals("path", l0.parameters.get(2));
-            assertEquals("path.version", l0.parameters.get(3));
-            SQLResult l1 = api.getDocumentLinkSQL(TEST_PATH_ID1);
+            assertEquals("basePath", l0.parameters[0]);
+            assertEquals("parent.path", l0.parameters[1]);
+            assertEquals("path", l0.parameters[2]);
+            assertEquals("path.version", l0.parameters[3]);
+            GeneratedSQL l1 = api.getDocumentLinkSQL(TEST_PATH_ID1);
             System.out.println(l1.sql);
             assertTrue(l1.sql.contains("? || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l1.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
             assertTrue(l1.sql.contains("WHERE T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
-            assertEquals("basePath", l1.parameters.get(0));
-            assertEquals("parent.path", l1.parameters.get(1));
-            assertEquals("parent.parent.path", l1.parameters.get(2));
-            assertEquals("parent.path.version", l1.parameters.get(3));
-            assertEquals("path", l1.parameters.get(4));
-            assertEquals("path.version", l1.parameters.get(5));
+            assertEquals("basePath", l1.parameters[0]);
+            assertEquals("parent.path", l1.parameters[1]);
+            assertEquals("parent.parent.path", l1.parameters[2]);
+            assertEquals("parent.path.version", l1.parameters[3]);
+            assertEquals("path", l1.parameters[4]);
+            assertEquals("path.version", l1.parameters[5]);
         }
     }
     
     @Test 
     public void testGetFolderSQL() throws SQLException {
         try (SQLAPI api = factory.getSQLAPI()) {
-            SQLResult l0 = api.getFolderSQL(TEST_PATH_1);
+            GeneratedSQL l0 = api.getFolderSQL(TEST_PATH_1);
             System.out.println(l0.sql);
             assertTrue(l0.sql.contains("? || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l0.sql.contains("VIEW_FOLDERS T0"));
             assertTrue(l0.sql.contains("WHERE T0.NAME=? AND T0.PARENT_ID=? AND T0.VERSION=?"));
-            assertEquals("basePath", l0.parameters.get(0));
-            assertEquals("path", l0.parameters.get(1));
-            assertEquals("parent.path", l0.parameters.get(2));
-            assertEquals("path.version", l0.parameters.get(3));
-            SQLResult l1 = api.getFolderSQL(TEST_PATH_2);
+            assertEquals("basePath", l0.parameters[0]);
+            assertEquals("path", l0.parameters[1]);
+            assertEquals("parent.path", l0.parameters[2]);
+            assertEquals("path.version", l0.parameters[3]);
+            GeneratedSQL l1 = api.getFolderSQL(TEST_PATH_2);
             System.out.println(l1.sql);
             assertTrue(l1.sql.contains("? || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l1.sql.contains("VIEW_FOLDERS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
             assertTrue(l1.sql.contains("WHERE T0.NAME=? AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.VERSION=?"));
-            assertEquals("basePath", l0.parameters.get(0));
-            assertEquals("path", l1.parameters.get(1));
-            assertEquals("parent.path", l1.parameters.get(2));
-            assertEquals("parent.parent.path", l1.parameters.get(3));
-            assertEquals("parent.path.version", l1.parameters.get(4));
-            assertEquals("path.version", l1.parameters.get(5));
-            SQLResult l2 = api.getFolderSQL(TEST_PATH_V3);
+            assertEquals("basePath", l0.parameters[0]);
+            assertEquals("path", l1.parameters[1]);
+            assertEquals("parent.path", l1.parameters[2]);
+            assertEquals("parent.parent.path", l1.parameters[3]);
+            assertEquals("parent.path.version", l1.parameters[4]);
+            assertEquals("path.version", l1.parameters[5]);
+            GeneratedSQL l2 = api.getFolderSQL(TEST_PATH_V3);
             System.out.println(l2.sql);
             assertTrue(l2.sql.contains("? || '/' || T2.NAME || CASEWHEN(T2.VERSION='', '', '@' || T2.VERSION) || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l2.sql.contains("VIEW_FOLDERS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID INNER JOIN VIEW_FOLDERS T2 ON T1.PARENT_ID = T2.ID"));
             assertTrue(l2.sql.contains("WHERE T0.NAME=? AND T1.NAME=? AND T2.NAME=? AND T2.PARENT_ID=? AND T2.VERSION=? AND T1.VERSION=? AND T0.VERSION=?"));
-            assertEquals("basePath", l0.parameters.get(0));
-            assertEquals("path", l2.parameters.get(1));
-            assertEquals("parent.path", l2.parameters.get(2));
-            assertEquals("parent.parent.path", l2.parameters.get(3));
-            assertEquals("parent.parent.parent.path", l2.parameters.get(4));
-            assertEquals("parent.parent.path.version", l2.parameters.get(5));
-            assertEquals("parent.path.version", l2.parameters.get(6));
-            assertEquals("path.version", l2.parameters.get(7));
+            assertEquals("basePath", l0.parameters[0]);
+            assertEquals("path", l2.parameters[1]);
+            assertEquals("parent.path", l2.parameters[2]);
+            assertEquals("parent.parent.path", l2.parameters[3]);
+            assertEquals("parent.parent.parent.path", l2.parameters[4]);
+            assertEquals("parent.parent.path.version", l2.parameters[5]);
+            assertEquals("parent.path.version", l2.parameters[6]);
+            assertEquals("path.version", l2.parameters[7]);
         }
     }
     
     @Test
     public void testGetInfoSQL() throws SQLException {
         try (SQLAPI api = factory.getSQLAPI()) {
-            SQLResult l0 = api.getInfoSQL(TEST_PATH_0);
+            GeneratedSQL l0 = api.getInfoSQL(TEST_PATH_0);
             System.out.println(l0.sql);
             assertTrue(l0.sql.contains("? AS PATH"));
             assertTrue(l0.sql.contains("NODES T0"));
             assertTrue(l0.sql.contains("WHERE T0.ID=?"));
-            assertEquals("basePath", l0.parameters.get(0));
-            assertEquals("path", l0.parameters.get(1));
-            SQLResult l1 = api.getInfoSQL(TEST_PATH_1);
+            assertEquals("basePath", l0.parameters[0]);
+            assertEquals("path", l0.parameters[1]);
+            GeneratedSQL l1 = api.getInfoSQL(TEST_PATH_1);
             System.out.println(l1.sql);
             assertTrue(l1.sql.contains("T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l1.sql.contains("NODES T0"));
             assertTrue(l1.sql.contains("WHERE T0.NAME=? AND T0.PARENT_ID=? AND T0.VERSION=?"));
-            assertEquals("basePath", l1.parameters.get(0));
-            assertEquals("path", l1.parameters.get(1));
-            assertEquals("parent.path", l1.parameters.get(2));
-            assertEquals("path.version", l1.parameters.get(3));
+            assertEquals("basePath", l1.parameters[0]);
+            assertEquals("path", l1.parameters[1]);
+            assertEquals("parent.path", l1.parameters[2]);
+            assertEquals("path.version", l1.parameters[3]);
         }
     }
 

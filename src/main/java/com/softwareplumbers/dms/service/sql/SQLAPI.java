@@ -10,6 +10,7 @@ import com.softwareplumbers.common.sql.FluentStatement;
 import com.softwareplumbers.common.abstractquery.Param;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
+import com.softwareplumbers.common.abstractquery.visitor.Visitors.SQLResult;
 import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
@@ -48,10 +49,10 @@ import javax.sql.DataSource;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import com.softwareplumbers.common.abstractquery.visitor.Visitors.SQLResult;
 import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.Exceptions.InvalidWorkspaceState;
 import com.softwareplumbers.dms.VersionedRepositoryObject;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -62,6 +63,18 @@ import java.util.List;
  * @author jonathan
  */
 public class SQLAPI implements AutoCloseable {
+    
+    static class GeneratedSQL {
+        public final String sql;
+        public final String[] parameters;
+        public GeneratedSQL(String sql, String... parameters) {
+            this.sql = sql;
+            this.parameters = parameters;
+        }
+        public static final GeneratedSQL of(SQLResult result) {
+            return new GeneratedSQL(result.sql, result.parameters.toArray(new String[result.parameters.size()]));
+        }
+    }
     
     private static XLogger LOG = XLoggerFactory.getXLogger(SQLAPI.class);
     
@@ -294,43 +307,45 @@ public class SQLAPI implements AutoCloseable {
         return builder.toString();
     }
     
-    SQLResult getParametrizedNameExpression(RepositoryPath path) {
+    GeneratedSQL getParametrizedNameExpression(RepositoryPath path) {
         StringBuilder builder = new StringBuilder();
         int depth = path.afterRootId().size();
         builder.append("?");      
         for (int i = depth - 1; i >= 0 ; i--)
             builder.append(Templates.substitute(templates.nameExpr, i));
-        return new SQLResult(builder.toString(), Collections.singletonList("basePath"));
+        return new GeneratedSQL(builder.toString(), "basePath");
     }
     
     Query getDBFilterExpression(Iterable<QualifiedName> validFields, Query filter) {
         return StreamSupport.stream(validFields.spliterator(), false).reduce(Query.UNBOUNDED, (query, name) -> query.intersect(filter.getConstraint(name)), (query1, query2)->query1.intersect(query2));
     }
     
-    private <T> List<T> concat(Collection<T>... iterables) {
-        return Stream.of(iterables).flatMap(Collection::stream).collect(Collectors.toList());
+    private String[] concat(String[] first, String[] second) {
+        String[] both = Arrays.copyOf(first, first.length + second.length);
+        System.arraycopy(second, 0, both, first.length, second.length);
+        return both;
     }
     
-    SQLResult getInfoSQL(RepositoryPath path) {
+    GeneratedSQL getInfoSQL(RepositoryPath path) {
         int depth = path.getDocumentPath().size();
-        SQLResult criteria = path.getDocumentId().isPresent()  
-            ? getParameterizedNameQuery("path", path).toExpression(schema.getLinkFormatter(false))
-            : getParameterizedNameQuery("path", path).toExpression(schema.getNodeFormatter());
-        SQLResult name =  getParametrizedNameExpression(path);
+        GeneratedSQL criteria = path.getDocumentId().isPresent()  
+            ? GeneratedSQL.of(getParameterizedNameQuery("path", path).toExpression(schema.getLinkFormatter(false)))
+            : GeneratedSQL.of(getParameterizedNameQuery("path", path).toExpression(schema.getNodeFormatter()));
+        GeneratedSQL name =  getParametrizedNameExpression(path);
         String sql = Templates.substitute(templates.fetchInfo, name.sql, criteria.sql);
-        return new SQLResult(sql, concat(name.parameters, criteria.parameters));
+        return new GeneratedSQL(sql, concat(name.parameters, criteria.parameters));
     }
     
-    SQLResult getDocumentLinkSQL(RepositoryPath path) {
+    GeneratedSQL getDocumentLinkSQL(RepositoryPath path) {
         Query query = getParameterizedNameQuery("path", path);
         int depth = path.getDocumentPath().size();
         // This test is only needed 
         boolean versionRequested = path.part.getVersion().isPresent();
-        SQLResult criteria = query.toExpression(schema.getLinkFormatter(versionRequested));
-        SQLResult name =  getParametrizedNameExpression(path);
+        GeneratedSQL criteria = GeneratedSQL.of(query.toExpression(schema.getLinkFormatter(versionRequested)));
+        GeneratedSQL name =  getParametrizedNameExpression(path);
         String sql = Templates.substitute(templates.fetchDocumentLink, name.sql, criteria.sql);
-        List<String> parameters = concat(name.parameters, criteria.parameters);
-        return new SQLResult(sql, parameters);
+        String[] parameters = concat(name.parameters, criteria.parameters);
+        return new GeneratedSQL(sql, parameters);
     }
     
     String getDocumentSearchSQL(Query query, boolean searchHistory) {
@@ -352,12 +367,12 @@ public class SQLAPI implements AutoCloseable {
         return Templates.substitute(templates.fetchDocumentLink, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getLinkFormatter(false)).sql);
     }
     
-    SQLResult getFolderSQL(RepositoryPath path) {
+    GeneratedSQL getFolderSQL(RepositoryPath path) {
         int depth = path.getDocumentPath().size();   
-        SQLResult criteria = getParameterizedNameQuery("path", path).toExpression(schema.getFolderFormatter());
-        SQLResult name = getParametrizedNameExpression(path);
+        GeneratedSQL criteria = GeneratedSQL.of(getParameterizedNameQuery("path", path).toExpression(schema.getFolderFormatter()));
+        GeneratedSQL name = getParametrizedNameExpression(path);
         String sql = Templates.substitute(templates.fetchFolder, name.sql, criteria.sql);
-        return new SQLResult(sql, concat(name.parameters, criteria.parameters));
+        return new GeneratedSQL(sql, concat(name.parameters, criteria.parameters));
     }
 
     String searchFolderSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean freeSearch) {
@@ -511,8 +526,9 @@ public class SQLAPI implements AutoCloseable {
             .execute(con);
         
         RepositoryPath path = RepositoryPath.ROOT.addId(parentId.toString()).addDocumentPath(name);
-                
-        try (Stream<T> result = FluentStatement.of(this.getFolderSQL(path))
+        
+        GeneratedSQL sql = this.getFolderSQL(path);
+        try (Stream<T> result = FluentStatement.of(sql.sql, sql.parameters)
             .set("basePath", getBasePath(path, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(path))).join("/"))    
             .set(Types.PATH, "path", path)
             .execute(con, mapper)
@@ -536,7 +552,8 @@ public class SQLAPI implements AutoCloseable {
         } else {
             Optional<RepositoryPath> basePath = getBasePath(name, mapper);
             if (!basePath.isPresent()) return LOG.exit(Optional.empty());
-            try (Stream<T> result = FluentStatement.of(getFolderSQL(name))
+            GeneratedSQL sql = getFolderSQL(name);
+            try (Stream<T> result = FluentStatement.of(sql.sql, sql.parameters)
                 .set("basePath",basePath.get().join("/"))
                 .set(Types.PATH, "path", name)
                 .execute(con, mapper)
@@ -570,8 +587,9 @@ public class SQLAPI implements AutoCloseable {
     public <T> Optional<T> getInfo(RepositoryPath name, Mapper<T> mapper) throws SQLException {
         LOG.entry(name);
         Optional<RepositoryPath> basePath = getBasePath(name, mapper);
-        if (!basePath.isPresent()) return LOG.exit(Optional.empty());        
-        try (Stream<T> results = FluentStatement.of(getInfoSQL(name))
+        if (!basePath.isPresent()) return LOG.exit(Optional.empty());
+        GeneratedSQL sql = getInfoSQL(name);
+        try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
             .set(1, basePath.get().join("/"))
             .set(Types.PATH, "path", name)
             .execute(con, mapper)) {
@@ -664,7 +682,8 @@ public class SQLAPI implements AutoCloseable {
             }
         }
         RepositoryPath resultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(docPart);
-        try (Stream<T> results = FluentStatement.of(getFolderSQL(resultPath))
+        GeneratedSQL sql = getFolderSQL(resultPath);
+        try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
             .set(1, getBasePath(resultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(resultPath))).join("/"))
             .set(Types.PATH, "path", resultPath)
             .execute(con, mapper)
@@ -699,7 +718,8 @@ public class SQLAPI implements AutoCloseable {
         
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(linkName);
         
-        try (Stream<T> results = LOG.exit(FluentStatement.of(getDocumentLinkSQL(shortResultPath))
+        GeneratedSQL sql = getDocumentLinkSQL(shortResultPath);
+        try (Stream<T> results = LOG.exit(FluentStatement.of(sql.sql, sql.parameters)
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
             .set(Types.PATH, "path", shortResultPath)
             .execute(con, mapper))) {       
@@ -808,7 +828,8 @@ public class SQLAPI implements AutoCloseable {
         
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).addDocumentPath(name);
         
-        try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(shortResultPath))
+        GeneratedSQL sql = getDocumentLinkSQL(shortResultPath);
+        try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
             .set(Types.PATH, "path", shortResultPath)
             .execute(con, mapper)) { 
@@ -828,8 +849,9 @@ public class SQLAPI implements AutoCloseable {
                 .set(Types.ID, 2, version)
                 .set(Types.ID, 3, info.get().id)
                 .execute(con);
-                        
-            try (Stream<T> results = FluentStatement.of(getDocumentLinkSQL(shortResultPath))
+            
+            GeneratedSQL sql = getDocumentLinkSQL(shortResultPath);
+            try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
             .set(Types.PATH, "path", shortResultPath)
                 .execute(con, mapper)
@@ -852,7 +874,8 @@ public class SQLAPI implements AutoCloseable {
             .set(Types.ID, 3, folderId)
             .execute(con);
         if (count == 0) return Optional.empty();
-        try (Stream<T> result = FluentStatement.of(getFolderSQL(shortResultPath))
+        GeneratedSQL sql = getFolderSQL(shortResultPath);
+        try (Stream<T> result = FluentStatement.of(sql.sql, sql.parameters)
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new InvalidWorkspace(shortResultPath))).join("/"))
             .set(Types.PATH, "path", shortResultPath)
             .execute(con, mapper)
@@ -883,8 +906,9 @@ public class SQLAPI implements AutoCloseable {
         LOG.entry(path, mapper);
         Optional<RepositoryPath> basePath = getBasePath(path, mapper);
         if (!basePath.isPresent()) return Optional.empty();
+        GeneratedSQL sql = getDocumentLinkSQL(path);
         try (Stream<T> result = FluentStatement
-            .of(getDocumentLinkSQL(path))
+            .of(sql.sql, sql.parameters)
             .set(1, basePath.get().join("/"))
             .set(Types.PATH, "path", path)
             .execute(con, mapper)
