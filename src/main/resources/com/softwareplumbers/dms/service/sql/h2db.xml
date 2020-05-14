@@ -11,9 +11,11 @@
     
     <context:annotation-config />
     
-    <bean class="com.softwareplumbers.dms.service.sql.Schema" scope="singleton">
-        
-        <property name="DropScript" >
+    <bean id="conversionService"
+    class="org.springframework.context.support.ConversionServiceFactoryBean"/>
+      
+    <bean id="dropScript" class="com.softwareplumbers.common.sql.Script">
+        <property name="sql" >
             <value>
                 DROP VIEW IF EXISTS VIEW_FOLDERS;
                 DROP VIEW IF EXISTS VIEW_LINKS;
@@ -26,8 +28,10 @@
                 DROP TABLE IF EXISTS NODES;
             </value>
         </property>
+    </bean>
         
-        <property name="CreateScript">
+    <bean id="createScript" class="com.softwareplumbers.common.sql.Script">
+        <property name="sql" >
             <value>
                 CREATE TABLE NODES (
                     ID UUID PRIMARY KEY,
@@ -72,8 +76,10 @@
 
             </value>
         </property>
-        
-        <property name="UpdateScript">
+    </bean>
+    
+    <bean id="updateScript" class="com.softwareplumbers.common.sql.Script">        
+        <property name="sql">
             <value>
                 
                 CREATE OR REPLACE VIEW VIEW_DOCUMENTS AS SELECT
@@ -182,243 +188,278 @@
              
             </value>
         </property>
-
     </bean>
     
-    <bean class="com.softwareplumbers.dms.service.sql.Operations" scope="singleton">
-        
-        <property name="FetchPathToId">
-            <value>
-                WITH LINK(ID,NAME) AS (
-                    SELECT ID,NODES.NAME || CASEWHEN(NODES.VERSION='', '', '@' || NODES.VERSION)
-                    FROM NODES 
-                    WHERE PARENT_ID = '00000000-0000-0000-0000-000000000000' 
-                    UNION ALL SELECT 
-                        NODES.ID, 
-                        IFNULL(LINK.NAME || '/', '') || NODES.NAME || CASEWHEN(NODES.VERSION='', '', '@' || NODES.VERSION)
-                    FROM LINK 
-                    INNER JOIN NODES ON LINK.ID = NODES.PARENT_ID
-                ) 
-                SELECT NAME FROM LINK WHERE ID = ?
-            </value>
-        </property>
-        
-        <property name="FetchLastNameLike" value="SELECT MAX(NAME) FROM NODES WHERE PARENT_ID=? AND NAME LIKE ?"/>
+    <bean class="com.softwareplumbers.common.sql.OperationStore" scope="singleton">
+        <constructor-arg>
+            <map key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Operation">
+                <entry key="fetchPathToId">
+                    <value>
+                        WITH LINK(ID,NAME) AS (
+                            SELECT ID,NODES.NAME || CASEWHEN(NODES.VERSION='', '', '@' || NODES.VERSION)
+                            FROM NODES 
+                            WHERE PARENT_ID = '00000000-0000-0000-0000-000000000000' 
+                            UNION ALL SELECT 
+                                NODES.ID, 
+                                IFNULL(LINK.NAME || '/', '') || NODES.NAME || CASEWHEN(NODES.VERSION='', '', '@' || NODES.VERSION)
+                            FROM LINK 
+                            INNER JOIN NODES ON LINK.ID = NODES.PARENT_ID
+                        ) 
+                        SELECT NAME FROM LINK WHERE ID = ?
+                    </value>
+                </entry>
 
-        <property name="CreateDocument">
-            <value>
-                INSERT INTO DOCUMENTS (ID, LATEST_VERSION) VALUES (?,?)
-            </value>
-        </property>
-        <property name="CreateVersion">
-            <value>
-                INSERT INTO VERSIONS 
-                    (DOCUMENT_ID, ID, MEDIA_TYPE, LENGTH, DIGEST, METADATA, CREATED) 
-                VALUES (?,?,?,?,?,?, CURRENT_TIMESTAMP)
-            </value>
-        </property>
-        
-        <property name="CreateNode">
-            <value>
-                INSERT INTO NODES (ID, PARENT_ID, NAME, TYPE, DELETED) VALUES (?,?,?,?,FALSE) 
-            </value>
-        </property>
-        
-        <property name="CopyNode">
-            <value>
-                INSERT INTO NODES (ID, PARENT_ID, NAME, VERSION, TYPE, DELETED) SELECT ?, ?, NAME, VERSION, TYPE, DELETED FROM NODES WHERE ID = ?  
-            </value>
-        </property>
+                <entry key="fetchLastNameLike" value="SELECT MAX(NAME) FROM NODES WHERE PARENT_ID=? AND NAME LIKE ?"/>
 
-        <property name="PublishNode">
-            <value>
-                INSERT INTO NODES (ID, PARENT_ID, NAME, VERSION, TYPE, DELETED) SELECT ?, PARENT_ID, NAME, ?, TYPE, FALSE FROM NODES WHERE ID = ?  
-            </value>
-        </property>
+                <entry key="createDocument">
+                    <value>
+                        INSERT INTO DOCUMENTS (ID, LATEST_VERSION) VALUES (?,?)
+                    </value>
+                </entry>
+                <entry key="createVersion">
+                    <value>
+                        INSERT INTO VERSIONS 
+                            (DOCUMENT_ID, ID, MEDIA_TYPE, LENGTH, DIGEST, METADATA, CREATED) 
+                        VALUES (?,?,?,?,?,?, CURRENT_TIMESTAMP)
+                    </value>
+                </entry>
+
+                <entry key="createNode">
+                    <value>
+                        INSERT INTO NODES (ID, PARENT_ID, NAME, TYPE, DELETED) VALUES (?,?,?,?,FALSE) 
+                    </value>
+                </entry>
+
+                <entry key="copyNode">
+                    <value>
+                        INSERT INTO NODES (ID, PARENT_ID, NAME, VERSION, TYPE, DELETED) SELECT ?, ?, NAME, VERSION, TYPE, DELETED FROM NODES WHERE ID = ?  
+                    </value>
+                </entry>
+
+                <entry key="publishNode">
+                    <value>
+                        INSERT INTO NODES (ID, PARENT_ID, NAME, VERSION, TYPE, DELETED) SELECT ?, PARENT_ID, NAME, ?, TYPE, FALSE FROM NODES WHERE ID = ?  
+                    </value>
+                </entry>
+
+                <entry key="createFolder">
+                    <value>
+                        INSERT INTO FOLDERS (ID, STATE, METADATA) VALUES (?,?,?)
+                    </value>
+                </entry>
+
+                <entry key="copyFolder">
+                    <value>
+                        INSERT INTO FOLDERS (ID, STATE, METADATA) 
+                        SELECT ?, STATE, METADATA
+                        FROM FOLDERS
+                        WHERE ID = ?
+                    </value>
+                </entry>
+
+                <entry key="createLink">
+                    <value>
+                        INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) VALUES (?,?,?,?)
+                    </value>
+                </entry>
+
+                <entry key="copyLink">
+                    <value>
+                        INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) 
+                        SELECT ?, DOCUMENT_ID, VERSION_ID, VERSIONED
+                        FROM LINKS
+                        WHERE ID = ?                
+                    </value>
+                </entry>
+
+                <entry key="publishLink">
+                    <value>
+                        INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) 
+                        SELECT ?, DOCUMENT_ID, VERSION_ID, TRUE
+                        FROM VIEW_LINKS
+                        WHERE ID = ?                
+                    </value>
+                </entry>
+
+                <entry key="fetchDocument">
+                    <value>
+                        SELECT 
+                            DOCUMENT_ID, 
+                            VERSION_ID,
+                            CREATED,
+                            MEDIA_TYPE,
+                            LENGTH,
+                            DIGEST,
+                            METADATA
+                        FROM VIEW_DOCUMENTS 
+                        WHERE DOCUMENT_ID=? AND VERSION_ID=?
+                    </value>
+                </entry>
                 
-        <property name="CreateFolder">
-            <value>
-                INSERT INTO FOLDERS (ID, STATE, METADATA) VALUES (?,?,?)
-            </value>
-        </property>
-        
-        <property name="CopyFolder">
-            <value>
-                INSERT INTO FOLDERS (ID, STATE, METADATA) 
-                SELECT ?, STATE, METADATA
-                FROM FOLDERS
-                WHERE ID = ?
-            </value>
-        </property>
-        
-        <property name="CreateLink">
-            <value>
-                INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) VALUES (?,?,?,?)
-            </value>
-        </property>
-        
-        <property name="CopyLink">
-            <value>
-                INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) 
-                SELECT ?, DOCUMENT_ID, VERSION_ID, VERSIONED
-                FROM LINKS
-                WHERE ID = ?                
-            </value>
-        </property>
+                <entry key="fetchLatestDocument">
+                    <value>
+                        SELECT 
+                            DOCUMENT_ID, 
+                            VERSION_ID,
+                            CREATED,
+                            MEDIA_TYPE,
+                            LENGTH,
+                            DIGEST,
+                            METADATA
+                        FROM VIEW_DOCUMENTS 
+                        WHERE DOCUMENT_ID=? AND LATEST=TRUE                        
+                    </value>
+                </entry>
 
-        <property name="PublishLink">
-            <value>
-                INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) 
-                SELECT ?, DOCUMENT_ID, VERSION_ID, TRUE
-                FROM VIEW_LINKS
-                WHERE ID = ?                
-            </value>
-        </property>
+                <entry key="updateDocument">
+                    <value>
+                        UPDATE DOCUMENTS SET LATEST_VERSION = ? WHERE ID = ?
+                    </value>
+                </entry>        
+                <entry key="updateLink">
+                    <value>
+                        UPDATE LINKS SET DOCUMENT_ID=?, VERSION_ID=? WHERE LINKS.ID=?
+                    </value>
+                </entry>
 
-        <property name="UpdateDocument">
-            <value>
-                UPDATE DOCUMENTS SET LATEST_VERSION = ? WHERE ID = ?
-            </value>
-        </property>        
-        <property name="UpdateLink">
-            <value>
-                UPDATE LINKS SET DOCUMENT_ID=?, VERSION_ID=? WHERE LINKS.ID=?
-            </value>
-        </property>
-        
-        <property name="UpdateFolder">
-            <value>
-                UPDATE FOLDERS SET STATE=?, METADATA=? WHERE FOLDERS.ID=?
-            </value>
-        </property>
-        
-        <property name="LockVersions">
-            <value>
-                UPDATE LINKS 
-                SET VERSIONED=TRUE, 
-                    VERSION_ID=(
-                        SELECT LATEST_VERSION 
-                        FROM DOCUMENTS 
-                        WHERE DOCUMENTS.ID=LINKS.DOCUMENT_ID
-                    ) 
-                WHERE LINKS.ID IN (
-                    SELECT NODES.ID 
-                    FROM NODES 
-                    WHERE NODES.PARENT_ID=?
-                )
-            </value>
-        </property>
-        
-        <property name="UnlockVersions">
-            <value>
-                UPDATE LINKS 
-                SET VERSIONED=FALSE 
-                WHERE LINKS.ID IN (
-                    SELECT NODES.ID 
-                    FROM NODES 
-                    WHERE NODES.PARENT_ID=?
-                )
-            </value>
-        </property>
-        
-        <property name="FetchChildren">
-            <value>
-                SELECT 
-                    ID, 
-                    PARENT_ID,
-                    NAME,
-                    DELETED, 
-                    TYPE,
-                    NAME AS PATH
-                FROM
-                    NODES
-                WHERE PARENT_ID = ?
-            </value>
-        </property>
-        
-        <property name="DeleteObject">
-            <value>
-                UPDATE NODES SET DELETED=TRUE WHERE ID=?
-            </value>
-        </property>
-        
-        <property name="DeleteDocumentById">
-            <value>
-                UPDATE NODES SET DELETED=TRUE 
-                WHERE PARENT_ID=? 
-                AND EXISTS (
-                    SELECT ID FROM LINKS 
-                    WHERE LINKS.ID = NODES.ID AND LINKS.DOCUMENT_ID = ?
-                )
-            </value>
-        </property>
+                <entry key="updateFolder">
+                    <value>
+                        UPDATE FOLDERS SET STATE=?, METADATA=? WHERE FOLDERS.ID=?
+                    </value>
+                </entry>
 
+                <entry key="lockVersions">
+                    <value>
+                        UPDATE LINKS 
+                        SET VERSIONED=TRUE, 
+                            VERSION_ID=(
+                                SELECT LATEST_VERSION 
+                                FROM DOCUMENTS 
+                                WHERE DOCUMENTS.ID=LINKS.DOCUMENT_ID
+                            ) 
+                        WHERE LINKS.ID IN (
+                            SELECT NODES.ID 
+                            FROM NODES 
+                            WHERE NODES.PARENT_ID=?
+                        )
+                    </value>
+                </entry>
+
+                <entry key="unlockVersions">
+                    <value>
+                        UPDATE LINKS 
+                        SET VERSIONED=FALSE 
+                        WHERE LINKS.ID IN (
+                            SELECT NODES.ID 
+                            FROM NODES 
+                            WHERE NODES.PARENT_ID=?
+                        )
+                    </value>
+                </entry>
+
+                <entry key="fetchChildren">
+                    <value>
+                        SELECT 
+                            ID, 
+                            PARENT_ID,
+                            NAME,
+                            DELETED, 
+                            TYPE,
+                            NAME AS PATH
+                        FROM
+                            NODES
+                        WHERE PARENT_ID = ?
+                    </value>
+                </entry>
+
+                <entry key="deleteObject">
+                    <value>
+                        UPDATE NODES SET DELETED=TRUE WHERE ID=?
+                    </value>
+                </entry>
+
+                <entry key="deleteDocumentById">
+                    <value>
+                        UPDATE NODES SET DELETED=TRUE 
+                        WHERE PARENT_ID=? 
+                        AND EXISTS (
+                            SELECT ID FROM LINKS 
+                            WHERE LINKS.ID = NODES.ID AND LINKS.DOCUMENT_ID = ?
+                        )
+                    </value>
+                </entry>
+            </map>
+        </constructor-arg>
     </bean>
     
-    <bean class="com.softwareplumbers.dms.service.sql.Templates" scope="singleton"> 
-        <property name="FetchDocumentLink">
-            <value>
-            SELECT 
-                T0.ID, 
-                T0.PARENT_ID,
-                T0.NAME,
-                T0.VERSION,
-                T0.DELETED, 
-                T0.VERSIONED,
-                T0.DOCUMENT_ID, 
-                T0.VERSION_ID,
-                T0.CREATED,
-                T0.MEDIA_TYPE,
-                T0.LENGTH,
-                T0.DIGEST,
-                T0.METADATA,
-                !{0} AS PATH
-            !{1}
-            </value>
-        </property>
-        <property name="FetchFolder">
-            <value>
-                SELECT 
-                    T0.ID, 
-                    T0.PARENT_ID,
-                    T0.NAME,
-                    T0.VERSION,
-                    T0.DELETED, 
-                    T0.STATE,
-                    T0.METADATA,
-                    !{0} AS PATH
-                !{1}
-            </value>
-        </property>
-        <property name="FetchInfo">
-            <value>
-                SELECT 
-                    T0.ID, 
-                    T0.PARENT_ID,
-                    T0.NAME,
-                    T0.VERSION,
-                    T0.DELETED, 
-                    T0.TYPE,
-                    !{0} AS PATH
-                !{1}
-            </value>
-        </property>
-        <property name="FetchDocument">
-            <value>
-                SELECT 
-                    DOCUMENT_ID, 
-                    VERSION_ID,
-                    CREATED,
-                    MEDIA_TYPE,
-                    LENGTH,
-                    DIGEST,
-                    METADATA
-                !{0}
-            </value>
-        </property>
-        <property name="NameExpr">
-            <value> || '/' || T!{0}.NAME || CASEWHEN(T!{0}.VERSION='', '', '@' || T!{0}.VERSION)</value>
-        </property>
+    <bean class="com.softwareplumbers.common.sql.TemplateStore" scope="singleton"> 
+        <constructor-arg>
+            <map key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Template">
+                <entry key="fetchDocumentLink">
+                    <value>
+                    SELECT 
+                        T0.ID, 
+                        T0.PARENT_ID,
+                        T0.NAME,
+                        T0.VERSION,
+                        T0.DELETED, 
+                        T0.VERSIONED,
+                        T0.DOCUMENT_ID, 
+                        T0.VERSION_ID,
+                        T0.CREATED,
+                        T0.MEDIA_TYPE,
+                        T0.LENGTH,
+                        T0.DIGEST,
+                        T0.METADATA,
+                        !{0} AS PATH
+                    !{1}
+                    </value>
+                </entry>
+                <entry key="fetchFolder">
+                    <value>
+                        SELECT 
+                            T0.ID, 
+                            T0.PARENT_ID,
+                            T0.NAME,
+                            T0.VERSION,
+                            T0.DELETED, 
+                            T0.STATE,
+                            T0.METADATA,
+                            !{0} AS PATH
+                        !{1}
+                    </value>
+                </entry>
+                <entry key="fetchInfo">
+                    <value>
+                        SELECT 
+                            T0.ID, 
+                            T0.PARENT_ID,
+                            T0.NAME,
+                            T0.VERSION,
+                            T0.DELETED, 
+                            T0.TYPE,
+                            !{0} AS PATH
+                        !{1}
+                    </value>
+                </entry>
+                <entry key="fetchDocument">
+                    <value>
+                        SELECT 
+                            DOCUMENT_ID, 
+                            VERSION_ID,
+                            CREATED,
+                            MEDIA_TYPE,
+                            LENGTH,
+                            DIGEST,
+                            METADATA
+                        !{0}
+                    </value>
+                </entry>
+                <entry key="nameExpr">
+                    <value> || '/' || T!{0}.NAME || CASEWHEN(T!{0}.VERSION='', '', '@' || T!{0}.VERSION)</value>
+                </entry>
+            </map>
+        </constructor-arg>
     </bean>
 
 </beans>

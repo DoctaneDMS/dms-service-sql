@@ -1,8 +1,14 @@
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.sql.OperationStore;
+import com.softwareplumbers.common.sql.Schema;
+import com.softwareplumbers.common.sql.Script;
+import com.softwareplumbers.common.sql.TemplateStore;
 import com.softwareplumbers.dms.common.test.TestModel;
 import java.nio.file.Paths;
 import java.sql.SQLException;
+import java.util.Map;
+import javax.annotation.Resource;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
@@ -20,25 +26,40 @@ import org.springframework.context.annotation.ImportResource;
  *
  * @author jonathan
  */
-@ImportResource("classpath:com/softwareplumbers/dms/service/sql/h2db.xml")
+@ImportResource({"classpath:com/softwareplumbers/dms/service/sql/h2db.xml","classpath:com/softwareplumbers/dms/service/sql/entities.xml"})
 public class LocalConfig {
     
-    @Autowired private ApplicationContext applicationContext;
+    @Autowired
+    ApplicationContext context;
     
+    @Resource
+    OperationStore<DocumentDatabase.Operation> operations;
+    
+    @Resource
+    TemplateStore<DocumentDatabase.Template> templates;
+
     @Bean public Filestore filestore() {
         return new LocalFilesystem(Paths.get("/var/tmp/doctane/filestore"));
     }
     
-    @Bean public SQLRepositoryService service() throws SQLException {
-        return new SQLRepositoryService(api(), filestore(), SQLRepositoryService.CreateOption.RECREATE);
+    @Bean public Schema schema() {
+        Schema schema = new Schema(datasource());
+        schema.setCreateScript(context.getBean("createScript", Script.class));
+        schema.setUpdateScript(context.getBean("updateScript", Script.class));
+        schema.setDropScript(context.getBean("dropScript", Script.class));
+        schema.setEntityMap(context.getBean("entityMap", Map.class));
+        return schema;
     }
     
-    @Bean public SQLAPIFactory api() {
-        return new SQLAPIFactory(
-            applicationContext.getBean(Operations.class), 
-            applicationContext.getBean(Templates.class), 
-            applicationContext.getBean(Schema.class)
-        );
+    @Bean public DocumentDatabase database() {
+        DocumentDatabase database = new DocumentDatabase(schema());
+        database.setOperations(operations);
+        database.setTemplates(templates);
+        return database;
+    }
+    
+    @Bean public SQLRepositoryService service() throws SQLException {
+        return new SQLRepositoryService(database(), filestore());
     }
      
     @Bean public DataSource datasource() {

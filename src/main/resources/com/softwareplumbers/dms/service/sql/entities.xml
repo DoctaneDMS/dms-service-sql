@@ -1,0 +1,119 @@
+<?xml version = "1.0" encoding = "UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+        http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-4.3.xsd
+        http://www.springframework.org/schema/util
+        http://www.springframework.org/schema/util/spring-util-4.3.xsd
+        http://www.springframework.org/schema/aop 
+        http://www.springframework.org/schema/aop/spring-aop-4.3.xsd" 
+       xmlns:aop="http://www.springframework.org/schema/aop">
+    
+    <context:annotation-config />
+    
+    <bean id="nodes" class="com.softwareplumbers.common.sql.Schema.Entity">
+        <constructor-arg>
+            <map>
+                <entry key="id" value="ID"/>
+                <entry key="version" value="VERSION"/>
+                <entry key="parentId" value="PARENT_ID"/>
+                <entry key="parent" value="PARENT_ID"/>
+                <entry key="name" value="NAME"/>
+                <entry key="deleted" value="DELETED"/>
+            </map>
+        </constructor-arg>
+        <property name="name" value="NODES"/>
+        <property name="id" value="ID"/>
+        <property name="links">
+            <map>
+                <entry key="parent" value-ref="nodes"/>
+            </map>
+        </property>
+    </bean>    
+    
+    <bean id="folders" class="com.softwareplumbers.common.sql.Schema.Entity">
+        <constructor-arg ref="nodes"/>
+        <constructor-arg>
+            <map>
+                <entry key="state" value="STATE"/>
+            </map>
+        </constructor-arg>    
+        <property name="name" value="VIEW_FOLDERS"/>
+        <property name="id" value="ID"/>
+        <property name="links">
+            <map>
+                <entry key="parent" value-ref="folders"/>
+            </map>
+        </property>
+    </bean>
+    
+    <bean id="versions" class="com.softwareplumbers.common.sql.Schema.Entity">
+        <constructor-arg>
+            <map>
+                <entry key="reference.id" value="DOCUMENT_ID"/>
+                <entry key="reference.version" value="VERSION"/>
+                <entry key="mediaType" value="MEDIA_TYPE"/>
+                <entry key="digest" value="DIGEST"/>
+                <entry key="length" value="LENGTH"/>
+                <entry key="latest" value="LATEST"/>
+            </map>
+        </constructor-arg>    
+        <property name="name" value="VIEW_DOCUMENTS"/>
+        <property name="id" value="VERSION"/>        
+    </bean>
+    
+    <bean id="links" class="com.softwareplumbers.common.sql.Schema.Entity">
+        <constructor-arg ref="nodes"/>
+        <constructor-arg>
+            <map>
+                <entry key="reference.id" value="DOCUMENT_ID"/>
+                <entry key="reference.version" value="VERSION_ID"/>
+                <entry key="mediaType" value="MEDIA_TYPE"/>
+                <entry key="digest" value="DIGEST"/>
+                <entry key="length" value="LENGTH"/>
+            </map>
+        </constructor-arg>    
+        <property name="name" value="VIEW_LINKS"/>
+        <property name="id" value="ID"/>
+        <property name="links">
+            <map>
+                <entry key="parent" value-ref="folders"/>
+            </map>
+        </property>
+    </bean>
+    
+    <bean id="linkVersions" class="com.softwareplumbers.common.sql.Schema.Entity">
+        <constructor-arg ref="nodes"/>
+        <constructor-arg>
+            <map>
+                <entry key="reference.id" value="DOCUMENT_ID"/>
+                <entry key="reference.version" value="VERSION_ID"/>
+                <entry key="mediaType" value="MEDIA_TYPE"/>
+                <entry key="digest" value="DIGEST"/>
+                <entry key="length" value="LENGTH"/>
+            </map>
+        </constructor-arg>    
+        <property name="name" value="VIEW_LINK_VERSIONS"/>
+        <property name="id" value="ID"/>
+        <property name="links">
+            <map>
+                <entry key="parent" value-ref="folders"/>
+            </map>
+        </property>
+    </bean>  
+    
+    <util:map id="entityMap" key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Type">
+        <entry key="NODE" value-ref="nodes"/>
+        <entry key="FOLDER" value-ref="folders"/>
+        <entry key="VERSION" value-ref="versions"/>
+        <entry key="LINK" value-ref="links"/>
+        <entry key="LINK_VERSION" value-ref="linkVersions"/>
+    </util:map>
+    
+</beans>
