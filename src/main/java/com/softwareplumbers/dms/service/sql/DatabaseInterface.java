@@ -287,13 +287,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
     Query getDBFilterExpression(Iterable<QualifiedName> validFields, Query filter) {
         return StreamSupport.stream(validFields.spliterator(), false).reduce(Query.UNBOUNDED, (query, name) -> query.intersect(filter.getConstraint(name)), (query1, query2)->query1.intersect(query2));
     }
-    
-    private String[] concat(String[] first, String[] second) {
-        String[] both = Arrays.copyOf(first, first.length + second.length);
-        System.arraycopy(second, 0, both, first.length, second.length);
-        return both;
-    }
-    
+        
     ParameterizedSQL getInfoSQL(RepositoryPath path) {
         int depth = path.getDocumentPath().size();
         ParameterizedSQL criteria = path.getDocumentId().isPresent()  
