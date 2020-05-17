@@ -480,8 +480,7 @@ public class SQLRepositoryService implements RepositoryService {
 
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
-        ) {    
- 
+        ) {     
             Optional<Workspace> existing = db.getFolder(path, DatabaseInterface.GET_WORKSPACE);
              
             if (existing.isPresent()) {
@@ -506,7 +505,7 @@ public class SQLRepositoryService implements RepositoryService {
                     VersionedElement part = (VersionedElement)path.part;
                     Workspace result = db.createFolder(parentId, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE);
                     db.commit();
-                    LOG.exit(result);
+                    return LOG.exit(result);
                 } else {
                     throw LOG.throwing(new Exceptions.InvalidWorkspace(path));
                 }
