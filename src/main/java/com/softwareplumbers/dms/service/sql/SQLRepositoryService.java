@@ -504,7 +504,9 @@ public class SQLRepositoryService implements RepositoryService {
                     Id parentId = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_ID)
                             .orElseThrow(doThrowInvalidWorkspace(path));
                     VersionedElement part = (VersionedElement)path.part;
-                    return LOG.exit(db.createFolder(parentId, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE));
+                    Workspace result = db.createFolder(parentId, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE);
+                    db.commit();
+                    LOG.exit(result);
                 } else {
                     throw LOG.throwing(new Exceptions.InvalidWorkspace(path));
                 }
