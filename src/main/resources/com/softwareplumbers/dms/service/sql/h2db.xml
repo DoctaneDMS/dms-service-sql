@@ -190,7 +190,7 @@
         </property>
     </bean>
     
-    <bean class="com.softwareplumbers.common.sql.OperationStore" scope="singleton">
+    <bean id="dms.operations" class="com.softwareplumbers.common.sql.OperationStore" scope="singleton">
         <constructor-arg>
             <map key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Operation">
                 <entry key="fetchPathToId">
@@ -392,7 +392,7 @@
         </constructor-arg>
     </bean>
     
-    <bean class="com.softwareplumbers.common.sql.TemplateStore" scope="singleton"> 
+    <bean id="dms.templates" class="com.softwareplumbers.common.sql.TemplateStore" scope="singleton"> 
         <constructor-arg>
             <map key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Template">
                 <entry key="fetchDocumentLink">
