@@ -2,17 +2,13 @@ package com.softwareplumbers.dms.service.sql;
 
 import com.softwareplumbers.common.sql.OperationStore;
 import com.softwareplumbers.common.sql.Schema;
-import com.softwareplumbers.common.sql.Script;
 import com.softwareplumbers.common.sql.TemplateStore;
 import com.softwareplumbers.dms.common.test.TestModel;
 import java.nio.file.Paths;
 import java.sql.SQLException;
-import java.util.Map;
-import javax.annotation.Resource;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportResource;
 
@@ -30,29 +26,20 @@ import org.springframework.context.annotation.ImportResource;
 public class LocalConfig {
     
     @Autowired
-    ApplicationContext context;
-    
-    @Resource
     OperationStore<DocumentDatabase.Operation> operations;
     
-    @Resource
+    @Autowired
     TemplateStore<DocumentDatabase.Template> templates;
+    
+    @Autowired
+    Schema schema;
 
     @Bean public Filestore filestore() {
         return new LocalFilesystem(Paths.get("/var/tmp/doctane/filestore"));
     }
     
-    @Bean public Schema schema() {
-        Schema schema = new Schema(datasource());
-        schema.setCreateScript(context.getBean("createScript", Script.class));
-        schema.setUpdateScript(context.getBean("updateScript", Script.class));
-        schema.setDropScript(context.getBean("dropScript", Script.class));
-        schema.setEntityMap(context.getBean("entityMap", Map.class));
-        return schema;
-    }
-    
     @Bean public DocumentDatabase database() {
-        DocumentDatabase database = new DocumentDatabase(schema());
+        DocumentDatabase database = new DocumentDatabase(schema);
         database.setOperations(operations);
         database.setTemplates(templates);
         return database;

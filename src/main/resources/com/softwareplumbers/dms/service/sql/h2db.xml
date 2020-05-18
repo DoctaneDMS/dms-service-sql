@@ -14,7 +14,7 @@
     <bean id="conversionService"
     class="org.springframework.context.support.ConversionServiceFactoryBean"/>
       
-    <bean id="dropScript" class="com.softwareplumbers.common.sql.Script">
+    <bean id="dms.dropScript" class="com.softwareplumbers.common.sql.Script">
         <property name="sql" >
             <value>
                 DROP VIEW IF EXISTS VIEW_FOLDERS;
@@ -30,7 +30,7 @@
         </property>
     </bean>
         
-    <bean id="createScript" class="com.softwareplumbers.common.sql.Script">
+    <bean id="dms.createScript" class="com.softwareplumbers.common.sql.Script">
         <property name="sql" >
             <value>
                 CREATE TABLE NODES (
@@ -78,7 +78,7 @@
         </property>
     </bean>
     
-    <bean id="updateScript" class="com.softwareplumbers.common.sql.Script">        
+    <bean id="dms.updateScript" class="com.softwareplumbers.common.sql.Script">        
         <property name="sql">
             <value>
                 
@@ -462,4 +462,12 @@
         </constructor-arg>
     </bean>
 
+    <bean id="Schema" class="com.softwareplumbers.common.sql.Schema"> 
+        <qualifier value="dms"/>
+        <property name="createScript" ref="dms.createScript"/>
+        <property name="updateScript" ref="dms.updateScript"/>
+        <property name="dropScript" ref="dms.dropScript"/>
+        <property name="entityMap" ref="dms.entityMap"/>
+    </bean>
+    
 </beans>
