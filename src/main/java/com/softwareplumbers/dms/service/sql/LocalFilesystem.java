@@ -13,12 +13,16 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLoggerFactory;
 
 /**
  *
  * @author jonathan
  */
 public class LocalFilesystem implements Filestore<Id> {
+    
+    private static final XLogger LOG = XLoggerFactory.getXLogger(LocalFilesystem.class);
     
     private Path basePath;
     
@@ -39,7 +43,9 @@ public class LocalFilesystem implements Filestore<Id> {
     }
     
     public void setPath(String basePath) {
+        LOG.entry(basePath);
         this.basePath = Paths.get(basePath);
+        LOG.exit();
     }
 
     @Override
@@ -54,46 +60,53 @@ public class LocalFilesystem implements Filestore<Id> {
 
     @Override
     public InputStream get(Id key) throws NotFound {
+        LOG.entry(key);
         try {
-            return Files.newInputStream(toPath(key));    
+            return LOG.exit(Files.newInputStream(toPath(key)));    
         } catch (IOException e) {
-            throw new NotFound(key);
+            throw LOG.throwing(new NotFound(key));
         }
     }
 
     @Override
     public void put(Id version, Document document, StreamInfo iss) {
+        LOG.entry(version, document, "<stream>");
         Path path = toPath(version);
         try (InputStream is = iss.supplier.get()) {
             Files.createDirectories(path.getParent());
             Files.copy(is, path);
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw LOG.throwing(new UncheckedIOException(e));
         }
+        LOG.exit();
     }
 
     @Override
     public void link(Document document, Id from, Id to) throws NotFound {
+        LOG.entry(document, from, to);
         Path toPath = toPath(to);
         try {
             Files.createDirectories(toPath.getParent());
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            throw LOG.throwing(new UncheckedIOException(e));
         }
         try {
             Files.createLink(toPath, toPath(from));
         } catch (IOException e) {
-            throw new NotFound(from);
+            throw LOG.throwing(new NotFound(from));
         }
+        LOG.exit();
     }
     
     @Override
     public void remove(Id key) throws NotFound {
+        LOG.entry(key);
         Path path = toPath(key);
         try {
             Files.delete(path);        
         } catch (IOException e) {
-            throw new NotFound(key);
+            throw LOG.throwing(new NotFound(key));
         } 
+        LOG.exit();
     }
 }

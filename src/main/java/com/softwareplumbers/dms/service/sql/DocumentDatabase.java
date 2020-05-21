@@ -5,15 +5,11 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
-import com.softwareplumbers.common.abstractquery.Range;
 import com.softwareplumbers.common.sql.AbstractDatabase;
 import com.softwareplumbers.common.sql.OperationStore;
 import com.softwareplumbers.common.sql.Schema;
 import com.softwareplumbers.common.sql.TemplateStore;
 import java.sql.SQLException;
-import javax.json.Json;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.stereotype.Component;
 
 /**
  *
