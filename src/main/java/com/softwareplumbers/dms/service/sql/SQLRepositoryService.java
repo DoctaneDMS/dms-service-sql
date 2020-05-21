@@ -209,7 +209,7 @@ public class SQLRepositoryService implements RepositoryService {
 
     @Override
     public DocumentLink createDocumentLinkAndName(RepositoryPath workspaceName, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
-        
+        LOG.entry(workspaceName, mediaType, iss, metadata, Options.loggable(options));
         Id version = filestore.generateKey();
         Id id = new Id();
         String baseName = getBaseName(metadata);
@@ -224,10 +224,12 @@ public class SQLRepositoryService implements RepositoryService {
             Id folderId = Id.of(folder.getId());
             String name = db.generateUniqueName(folderId, baseName);
             StreamInfo info = StreamInfo.of(iss);
+            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+            filestore.put(version, document, info);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
             DocumentLink result = db.createDocumentLink(folderId, name, id, version, DatabaseInterface.GET_LINK);
             db.commit();
-            return result;        
+            return LOG.exit(result);        
         
         } catch (SQLException e) {
             maybeDestroyDocument(version);
