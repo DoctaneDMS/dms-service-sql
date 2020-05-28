@@ -192,14 +192,14 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         return Query.from("version", Range.equals(Param.from(paramName)));
     }
     
-    Query getNameQuery(RepositoryPath name, boolean hideDeleted, boolean freeSearch) {
+    Query getNameQuery(RepositoryPath name, boolean hideDeleted) {
         
         if (name.isEmpty()) return Query.UNBOUNDED;
         
         Query result;
         
         if (name.parent.isEmpty()) {
-            if (name.part.type != RepositoryPath.ElementType.ID && !freeSearch) {
+            if (name.part.type != RepositoryPath.ElementType.ID) {
                 result = Query.from("parentId", Range.equals(Json.createValue(Id.ROOT_ID.toString())));              
             } else {
                 result = Query.UNBOUNDED;
@@ -211,7 +211,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
                 // is just on the node id
                 result = Query.from("parentId", Range.like(((RepositoryPath.IdElement)name.parent.part).id));
             } else {
-                result = Query.from("parent", getNameQuery(name.parent, hideDeleted, freeSearch));
+                result = Query.from("parent", getNameQuery(name.parent, hideDeleted));
             }
         }
         
@@ -313,7 +313,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         
     ParameterizedSQL getInfoSQL(RepositoryPath path) {
         int depth = path.getDocumentPath().size();
-        ParameterizedSQL criteria = !path.parent.isEmpty() && path.part.getId().isPresent()
+        ParameterizedSQL criteria = path.size() > 1 && path.part.getId().isPresent()
             ? getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.LINK))
             : getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.NODE));
         ParameterizedSQL name =  getParametrizedNameExpression(path);
@@ -341,11 +341,11 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         query = query.intersect(Query.from(QualifiedName.of("reference","id"), Range.equals(Param.from("0"))));
         return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(Type.VERSION)).sql);
     }
-    
-
-    
-    String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean freeSearch) {
-        filter = getDBFilterExpression(schema.getFields(Type.LINK), filter).intersect(getNameQuery(nameWithPatterns, true, freeSearch));
+        
+    String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter) {
+        filter = getDBFilterExpression(schema.getFields(Type.LINK), filter);
+        if (!nameWithPatterns.isEmpty())
+            filter = filter.intersect(getNameQuery(nameWithPatterns, true));
         return templates.getSQL(Template.fetchDocumentLink, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(Type.LINK)).sql);
     }
     
@@ -356,8 +356,11 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         return templates.getParameterizedSQL(Template.fetchFolder, name, criteria);
     }
 
-    String searchFolderSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean freeSearch) {
-        filter = getDBFilterExpression(schema.getFields(Type.FOLDER), filter).intersect(getNameQuery(nameWithPatterns, true, freeSearch));
+    String searchFolderSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter) {
+        filter = getDBFilterExpression(schema.getFields(Type.FOLDER), filter);
+        if (!nameWithPatterns.isEmpty()) {
+            filter=filter.intersect(getNameQuery(nameWithPatterns, true));            
+        }
         return templates.getSQL(Template.fetchFolder, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(Type.FOLDER)).sql);
     }
 
@@ -542,25 +545,31 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         }
     }
     
-    public <T> Stream<T> getFolders(RepositoryPath path, Query filter, boolean freeSearch, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, SQLException {
+    public <T> Stream<T> getFolders(RepositoryPath path, Query filter, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, SQLException {
         LOG.entry(path, mapper);
-        if (!path.parent.isEmpty() && path.part.type == ElementType.ID) return LOG.exit(Stream.empty());
-        Optional<RepositoryPath> basePath = getBasePath(path, mapper);
-        if (!basePath.isPresent()) return LOG.exit(Stream.empty());
-        Stream<T> result = FluentStatement
-            .of(searchFolderSQL(basePath.get(), path, filter, freeSearch))
-            .execute(schema.datasource, mapper);
-        
-        if (freeSearch && mapper == GET_WORKSPACE) {
-            // Can't do this in simple map because of connection issues with deferred execution.
-            // However, not a big deal as the primary use case for this is fetching the links related to a
-            // particular document id; normally a small list.
-            List<T> buffer = result.map(link->(T)getFullPath((Workspace)link)).collect(Collectors.toList());
-            result.close();
-            result = buffer.stream();
+        if (path.isEmpty()) {
+            // free search
+            Stream<T> result = FluentStatement
+                .of(searchFolderSQL(RepositoryPath.ROOT, path, filter))
+                .execute(schema.datasource, mapper);
+            if (mapper == GET_WORKSPACE) {
+                // Can't do this in simple map because of connection issues with deferred execution.
+                // However, not a big deal as the primary use case for this is fetching the links related to a
+                // particular document id; normally a small list.
+                List<T> buffer = result.map(link->(T)getFullPath((Workspace)link)).collect(Collectors.toList());
+                result.close();
+                result = buffer.stream();
+            }
+            return LOG.exit(result);
+        } else {
+            Optional<RepositoryPath> basePath = getBasePath(path, mapper);
+            // no base path implies we have an invalid root which does not exist
+            if (!basePath.isPresent()) return LOG.exit(Stream.empty());
+            Stream<T> result = FluentStatement
+                .of(searchFolderSQL(basePath.get(), path, filter))
+                .execute(schema.datasource, mapper);
+            return LOG.exit(result);
         }
-        
-        return LOG.exit(result);
     }
         
     public <T> Optional<T> getInfo(RepositoryPath name, Mapper<T> mapper) throws SQLException {
@@ -906,22 +915,30 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         }
     }
     
-    public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, boolean freeSearch, Mapper<T> mapper) throws SQLException {
+    public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, Mapper<T> mapper) throws SQLException {
         LOG.entry(path, filter, mapper);
-        Optional<RepositoryPath> basePath = getBasePath(path, mapper);
-        if (!basePath.isPresent()) return LOG.exit(Stream.empty());
-        Stream<T> result = FluentStatement
-            .of(searchDocumentLinkSQL(basePath.get(), path, filter, freeSearch))
-            .execute(schema.datasource, mapper);
-        if (freeSearch && mapper == GET_LINK) {
-            // Can't do this in simple map because of connection issues with deferred execution.
-            // However, not a big deal as the primary use case for this is fetching the links related to a
-            // particular document id; normally a small list.
-            List<T> buffer = result.map(link->(T)getFullPath((DocumentLink)link)).collect(Collectors.toList());
-            result.close();
-            result = buffer.stream();
-        }
-        return LOG.exit(result);
+        
+        if (path.isEmpty()) {
+            Stream<T> result = FluentStatement
+                .of(searchDocumentLinkSQL(RepositoryPath.ROOT, path, filter))
+                .execute(schema.datasource, mapper);
+            if (mapper == GET_LINK) {
+                // Can't do this in simple map because of connection issues with deferred execution.
+                // However, not a big deal as the primary use case for this is fetching the links related to a
+                // particular document id; normally a small list.
+                List<T> buffer = result.map(link->(T)getFullPath((DocumentLink)link)).collect(Collectors.toList());
+                result.close();
+                result = buffer.stream();
+            }
+            return LOG.exit(result);
+        } else {
+            Optional<RepositoryPath> basePath = getBasePath(path, mapper);
+            if (!basePath.isPresent()) return LOG.exit(Stream.empty());
+            Stream<T> result = FluentStatement
+                .of(searchDocumentLinkSQL(basePath.get(), path, filter))
+                .execute(schema.datasource, mapper);
+            return result;
+        }        
     }
     
     public void deleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {

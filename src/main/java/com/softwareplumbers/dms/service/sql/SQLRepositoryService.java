@@ -641,8 +641,8 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
         LOG.entry(path, Options.loggable(options));
-        
-        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !path.parent.isEmpty() && !path.part.getId().isPresent()) {
+        boolean hasDocumentId = path.size() > 1 && path.part.getId().isPresent();
+        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !path.isEmpty() && !hasDocumentId) {
             if (path.isEmpty() || !path.find(RepositoryPath::isWildcard).isPresent()) {
                 path = path.add("*");
             }
@@ -651,13 +651,14 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
-            boolean freeSearch = Options.FREE_SEARCH.isIn(options);
-            Stream<NamedRepositoryObject> links = db.getDocumentLinks(path, query, freeSearch, DatabaseInterface.GET_LINK)
+            Stream<NamedRepositoryObject> links = db.getDocumentLinks(path, query, DatabaseInterface.GET_LINK)
                 .filter(link->query.containsItem(link.toJson(this,1,0)))
                 .map(NamedRepositoryObject.class::cast);
-            Stream<NamedRepositoryObject> workspaces = db.getFolders(path, query, freeSearch, DatabaseInterface.GET_WORKSPACE)
-                .filter(link->query.containsItem(link.toJson(this,1,0)))
-                .map(NamedRepositoryObject.class::cast);
+            Stream<NamedRepositoryObject> workspaces = hasDocumentId 
+                ? Stream.empty() 
+                : db.getFolders(path, query, DatabaseInterface.GET_WORKSPACE)
+                    .filter(link->query.containsItem(link.toJson(this,1,0)))
+                    .map(NamedRepositoryObject.class::cast);
             return LOG.exit(Stream.concat(links, workspaces));
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
