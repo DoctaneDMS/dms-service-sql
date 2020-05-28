@@ -19,14 +19,12 @@ import com.softwareplumbers.dms.Reference;
 import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.RepositoryPath.ElementType;
-import com.softwareplumbers.dms.RepositoryPath.VersionedElement;
+import com.softwareplumbers.dms.RepositoryPath.NamedElement;
 import com.softwareplumbers.dms.RepositoryService;
-import com.softwareplumbers.dms.VersionedRepositoryObject;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.common.impl.DocumentImpl;
 import com.softwareplumbers.dms.common.impl.LocalData;
 import com.softwareplumbers.dms.common.impl.StreamInfo;
-import com.softwareplumbers.dms.common.impl.WorkspaceImpl;
 import com.softwareplumbers.dms.service.sql.Filestore.NotFound;
 import com.softwareplumbers.dms.service.sql.DatabaseInterface.Timestamped;
 import java.io.IOException;
@@ -186,9 +184,9 @@ public class SQLRepositoryService implements RepositoryService {
                 .orElseThrow(doThrowInvalidWorkspace(path.parent));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
-            if (path.part.type != ElementType.DOCUMENT_PATH)
+            if (path.part.type != ElementType.NAME)
                 throw LOG.throwing(new Exceptions.InvalidObjectName(path));
-            VersionedElement linkPart = (VersionedElement)path.part;
+            NamedElement linkPart = (NamedElement)path.part;
             StreamInfo info = StreamInfo.of(iss);
             
             
@@ -248,7 +246,7 @@ public class SQLRepositoryService implements RepositoryService {
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(workspaceName));
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
-            RepositoryPath existingName = workspaceName.addDocumentId(reference.getId());
+            RepositoryPath existingName = workspaceName.addId(reference.getId());
             Optional<DocumentLink> existing = db.getDocumentLink(existingName, DatabaseInterface.GET_LINK);
             if (existing.isPresent()) {
                 if (Options.RETURN_EXISTING_LINK_TO_SAME_DOCUMENT.isIn(options)) {
@@ -283,7 +281,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id docId = Id.ofDocument(reference.id);
             Id versionId = filestore.parseKey(reference.version);
             //Document document = db.getDocument(docId, versionId, DatabaseInterface.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            VersionedElement namePart = (VersionedElement)path.part;
+            NamedElement namePart = (NamedElement)path.part;
             DocumentLink result = db.createDocumentLink(folderId, namePart.name, docId, versionId, DatabaseInterface.GET_LINK);
             db.commit();
             return result;
@@ -321,7 +319,7 @@ public class SQLRepositoryService implements RepositoryService {
 
             // We need to get the existing link in order to implement custom merge behavior
             RepositoryPath shortPath = RepositoryPath.ROOT.addId(folder.getId()).add(path.part);
-            VersionedElement part = (VersionedElement)path.part;
+            NamedElement part = (NamedElement)path.part;
             Optional<DocumentLink> existing = db.getDocumentLink(shortPath, DatabaseInterface.GET_LINK);
             if (existing.isPresent()) {
                 DocumentLink existingDoc = existing.get();
@@ -372,7 +370,7 @@ public class SQLRepositoryService implements RepositoryService {
         ) {    
             Id docId = Id.ofDocument(reference.id);
             Id versionId = filestore.parseKey(reference.version);
-            VersionedElement part = (VersionedElement)path.part;
+            NamedElement part = (NamedElement)path.part;
             Workspace folder = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_WORKSPACE)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(path.parent));
             if (folder.getState() != Workspace.State.Open)
@@ -449,7 +447,7 @@ public class SQLRepositoryService implements RepositoryService {
         ) {
             
             Id parent_id = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(path.parent));
-            VersionedElement part = (VersionedElement)path.part;
+            NamedElement part = (NamedElement)path.part;
             Workspace result = db.createFolder(parent_id, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE);
             db.commit();
             return result;
@@ -504,7 +502,7 @@ public class SQLRepositoryService implements RepositoryService {
                 if (createMissing && !path.isEmpty()) { // can't create a folder without a path
                     Id parentId = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_ID)
                             .orElseThrow(doThrowInvalidWorkspace(path));
-                    VersionedElement part = (VersionedElement)path.part;
+                    NamedElement part = (NamedElement)path.part;
                     Workspace result = db.createFolder(parentId, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE);
                     db.commit();
                     return LOG.exit(result);
@@ -523,7 +521,7 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
-            db.deleteObject(workspacePath.addDocumentId(documentId));
+            db.deleteObject(workspacePath.addId(documentId));
             db.commit();
             LOG.exit();
         } catch (SQLException e) {
@@ -644,9 +642,9 @@ public class SQLRepositoryService implements RepositoryService {
     public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
         LOG.entry(path, Options.loggable(options));
         
-        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !path.find(RepositoryPath::isDocumentId).isPresent()) {
+        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !path.parent.isEmpty() && !path.part.getId().isPresent()) {
             if (path.isEmpty() || !path.find(RepositoryPath::isWildcard).isPresent()) {
-                path = path.addDocumentPath("*");
+                path = path.add("*");
             }
         }
 		

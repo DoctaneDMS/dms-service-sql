@@ -240,7 +240,7 @@ public class TestDatabaseInterface {
             Id child_id = api.createFolder(parent_id, "child", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             Id grandchild_id = api.createFolder(child_id, "grandchild", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             api.commit();
-            Optional<Workspace> result = api.getFolder(RepositoryPath.ROOT.addDocumentPaths("parent","child","grandchild"), DatabaseInterface.GET_WORKSPACE);
+            Optional<Workspace> result = api.getFolder(RepositoryPath.ROOT.add("parent","child","grandchild"), DatabaseInterface.GET_WORKSPACE);
             assertTrue(result.isPresent());
             assertEquals(grandchild_id.toString(), result.get().getId());
             assertEquals(RepositoryPath.valueOf("parent/child/grandchild"), result.get().getName());
@@ -254,9 +254,9 @@ public class TestDatabaseInterface {
             Id child_id = api.createFolder(parent_id, "child", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             api.createFolder(child_id, "grandchild", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             RepositoryPath parentPath = RepositoryPath.ROOT.addId(parent_id.toString());
-            Workspace sibling = api.copyFolder(parentPath.addDocumentPath("child"), parentPath.addDocumentPath("sibling"), false, DatabaseInterface.GET_WORKSPACE);
+            Workspace sibling = api.copyFolder(parentPath.add("child"), parentPath.add("sibling"), false, DatabaseInterface.GET_WORKSPACE);
             assertEquals(RepositoryPath.valueOf("parent/sibling"), sibling.getName());
-            Optional<Workspace> cousin = api.getFolder(RepositoryPath.ROOT.addDocumentPaths("parent","sibling","grandchild"), DatabaseInterface.GET_WORKSPACE);
+            Optional<Workspace> cousin = api.getFolder(RepositoryPath.ROOT.add("parent","sibling","grandchild"), DatabaseInterface.GET_WORKSPACE);
             assertTrue(cousin.isPresent());
         }
     }
@@ -272,7 +272,7 @@ public class TestDatabaseInterface {
             api.createDocumentLink(child_id, "grandchild", id, version, DatabaseInterface.GET_ID);
             RepositoryPath childPath = RepositoryPath.ROOT.addId(child_id.toString());
             RepositoryPath parentPath = RepositoryPath.ROOT.addId(parent_id.toString());
-            DocumentLink sibling = api.copyDocumentLink(childPath.addDocumentPath("grandchild"), parentPath.addDocumentPath("sibling"), false, DatabaseInterface.GET_LINK);
+            DocumentLink sibling = api.copyDocumentLink(childPath.add("grandchild"), parentPath.add("sibling"), false, DatabaseInterface.GET_LINK);
             assertEquals(RepositoryPath.valueOf("parent/sibling"), sibling.getName());
             assertEquals(id.toString(), sibling.getReference().id);
             assertEquals(version.toString(), sibling.getReference().version);
@@ -288,7 +288,7 @@ public class TestDatabaseInterface {
             api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(folder_id, "docname", id, version, DatabaseInterface.GET_ID);
             api.commit();
-            Optional<DocumentLink> result = api.getDocumentLink(RepositoryPath.ROOT.addId(folder_id.toString()).addDocumentPath("docname"), DatabaseInterface.GET_LINK);
+            Optional<DocumentLink> result = api.getDocumentLink(RepositoryPath.ROOT.addId(folder_id.toString()).add("docname"), DatabaseInterface.GET_LINK);
             assertTrue(result.isPresent());
             assertEquals(RepositoryPath.valueOf("foldername/docname"), result.get().getName());
             assertEquals(id.toString(), result.get().getReference().id);
@@ -309,7 +309,7 @@ public class TestDatabaseInterface {
             api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(folder_id, "docname", id, version, DatabaseInterface.GET_ID);
             api.commit();
-            Optional<DocumentLink> result = api.getDocumentLink(RepositoryPath.ROOT.addDocumentPaths("foldername","docname"), DatabaseInterface.GET_LINK);
+            Optional<DocumentLink> result = api.getDocumentLink(RepositoryPath.ROOT.add("foldername","docname"), DatabaseInterface.GET_LINK);
             assertTrue(result.isPresent());
             assertEquals(RepositoryPath.valueOf("foldername/docname"), result.get().getName());
             assertEquals(id.toString(), result.get().getReference().id);
