@@ -30,8 +30,9 @@ public class DocumentDatabase extends AbstractDatabase<DocumentDatabase.Type, Do
         NODE,
         VERSION,
         FOLDER,
-        LINK,
-        LINK_VERSION
+        VERSION_LINK,
+        DOCUMENT_LINK,
+        LINK
     }
        
     public static enum Operation {

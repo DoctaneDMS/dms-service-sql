@@ -68,6 +68,46 @@
         <property name="id" value="VERSION"/>        
     </bean>
     
+    <bean id="dms.versionLinks" class="com.softwareplumbers.common.sql.Schema.Entity">
+        <constructor-arg ref="dms.nodes"/>
+        <constructor-arg>
+            <map>
+                <entry key="reference.id" value="DOCUMENT_ID"/>
+                <entry key="reference.version" value="VERSION_ID"/>
+                <entry key="mediaType" value="MEDIA_TYPE"/>
+                <entry key="digest" value="DIGEST"/>
+                <entry key="length" value="LENGTH"/>
+            </map>
+        </constructor-arg>    
+        <property name="name" value="VIEW_VERSION_LINKS"/>
+        <property name="id" value="ID"/>
+        <property name="links">
+            <map>
+                <entry key="parent" value-ref="dms.folders"/>
+            </map>
+        </property>
+    </bean>
+    
+    <bean id="dms.documentLinks" class="com.softwareplumbers.common.sql.Schema.Entity">
+        <constructor-arg ref="dms.nodes"/>
+        <constructor-arg>
+            <map>
+                <entry key="reference.id" value="DOCUMENT_ID"/>
+                <entry key="reference.version" value="VERSION_ID"/>
+                <entry key="mediaType" value="MEDIA_TYPE"/>
+                <entry key="digest" value="DIGEST"/>
+                <entry key="length" value="LENGTH"/>
+            </map>
+        </constructor-arg>    
+        <property name="name" value="VIEW_DOCUMENT_LINKS"/>
+        <property name="id" value="ID"/>
+        <property name="links">
+            <map>
+                <entry key="parent" value-ref="dms.folders"/>
+            </map>
+        </property>
+    </bean>  
+    
     <bean id="dms.links" class="com.softwareplumbers.common.sql.Schema.Entity">
         <constructor-arg ref="dms.nodes"/>
         <constructor-arg>
@@ -77,6 +117,7 @@
                 <entry key="mediaType" value="MEDIA_TYPE"/>
                 <entry key="digest" value="DIGEST"/>
                 <entry key="length" value="LENGTH"/>
+                <entry key="current" value="CURRENT"/>
             </map>
         </constructor-arg>    
         <property name="name" value="VIEW_LINKS"/>
@@ -86,34 +127,16 @@
                 <entry key="parent" value-ref="dms.folders"/>
             </map>
         </property>
-    </bean>
-    
-    <bean id="dms.linkVersions" class="com.softwareplumbers.common.sql.Schema.Entity">
-        <constructor-arg ref="dms.nodes"/>
-        <constructor-arg>
-            <map>
-                <entry key="reference.id" value="DOCUMENT_ID"/>
-                <entry key="reference.version" value="VERSION_ID"/>
-                <entry key="mediaType" value="MEDIA_TYPE"/>
-                <entry key="digest" value="DIGEST"/>
-                <entry key="length" value="LENGTH"/>
-            </map>
-        </constructor-arg>    
-        <property name="name" value="VIEW_LINK_VERSIONS"/>
-        <property name="id" value="ID"/>
-        <property name="links">
-            <map>
-                <entry key="parent" value-ref="dms.folders"/>
-            </map>
-        </property>
     </bean>  
+    
     
     <util:map id="dms.entityMap" key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Type">
         <entry key="NODE" value-ref="dms.nodes"/>
         <entry key="FOLDER" value-ref="dms.folders"/>
         <entry key="VERSION" value-ref="dms.versions"/>
+        <entry key="VERSION_LINK" value-ref="dms.versionLinks"/>
+        <entry key="DOCUMENT_LINK" value-ref="dms.documentLinks"/>
         <entry key="LINK" value-ref="dms.links"/>
-        <entry key="LINK_VERSION" value-ref="dms.linkVersions"/>
     </util:map>
     
 </beans>

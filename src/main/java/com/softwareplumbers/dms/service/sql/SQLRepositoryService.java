@@ -5,6 +5,7 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.abstractquery.AbstractSet;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
 import com.softwareplumbers.common.pipedstream.OutputStreamConsumer;
@@ -26,20 +27,24 @@ import com.softwareplumbers.dms.common.impl.DocumentImpl;
 import com.softwareplumbers.dms.common.impl.LocalData;
 import com.softwareplumbers.dms.common.impl.StreamInfo;
 import com.softwareplumbers.dms.service.sql.Filestore.NotFound;
-import com.softwareplumbers.dms.service.sql.DatabaseInterface.Timestamped;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.sql.SQLException;
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
+import javax.json.JsonValue;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,8 +72,34 @@ public class SQLRepositoryService implements RepositoryService {
             LOG.catching(e);
         }
     }
+    
+    private static <T extends Document> T mostRecent(T a, T b) {
+        return a.getUpdateTime().compareTo(b.getUpdateTime()) > 0 ? a : b;
+    }
+    
+    private Collector<Document, ?, Map<String, Document>> mostRecentDocument() {        
+        return Collectors.toMap(document->document.getReference().getId(), v->v, SQLRepositoryService::mostRecent);
+    }
+    
+    private Collector<DocumentLink, ?, Map<RepositoryPath, Document>> mostRecentLink() {        
+        return Collectors.toMap(document->document.getName(), v->v, SQLRepositoryService::mostRecent);
+    }
 
-
+    private int parentLevels(Query query) {
+        AbstractSet<? extends JsonValue, ?> parent = query.getConstraint("parent");
+        if (parent == null || parent.isUnconstrained()) return 0;
+        else return 1;
+    }
+    
+    private <T extends RepositoryObject> Predicate<T> filterBy(Query query) {   
+        LOG.entry(query);
+        final int parentLevels = parentLevels(query);
+        LOG.trace("Parent levels {}", parentLevels);
+        return LOG.exit(item->{
+            return LOG.exit(query.containsItem(item.toJson(this, parentLevels, 0)));
+        });
+    }
+    
     private Supplier<Exceptions.InvalidWorkspace> doThrowInvalidWorkspace(RepositoryPath path) {
         return ()->LOG.throwing(new Exceptions.InvalidWorkspace(path));
     }
@@ -99,7 +130,7 @@ public class SQLRepositoryService implements RepositoryService {
             DatabaseInterface db = dbFactory.getInterface();
         ) {
             StreamInfo info = StreamInfo.of(iss);
-            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), Instant.now(), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
             filestore.put(version, document, info);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
             db.commit();
@@ -190,7 +221,7 @@ public class SQLRepositoryService implements RepositoryService {
             StreamInfo info = StreamInfo.of(iss);
             
             
-            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), Instant.now(), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
             filestore.put(version, document, info);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
             
@@ -222,7 +253,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id folderId = Id.of(folder.getId());
             String name = db.generateUniqueName(folderId, baseName);
             StreamInfo info = StreamInfo.of(iss);
-            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+            Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), Instant.now(), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
             filestore.put(version, document, info);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
             DocumentLink result = db.createDocumentLink(folderId, name, id, version, DatabaseInterface.GET_LINK);
@@ -305,7 +336,7 @@ public class SQLRepositoryService implements RepositoryService {
      */
     @Override
     public DocumentLink updateDocumentLink(RepositoryPath path, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
-        
+        LOG.entry(path, mediaType, iss, metadata, Options.loggable(options));
         Id version = filestore.generateKey();
 
         try (
@@ -341,19 +372,19 @@ public class SQLRepositoryService implements RepositoryService {
                 db.createVersion(replacingId, version, mediaType, length, digest, metadata);
                 DocumentLink result = db.updateDocumentLink(folderId, part.name, replacingId, version, DatabaseInterface.GET_LINK).get();
                 db.commit();           
-                return result;
+                return LOG.exit(result);
             } else {
                 if (Options.CREATE_MISSING_ITEM.isIn(options)) {
                     Id docId = new Id();
                     StreamInfo info = StreamInfo.of(iss);
-                    Document document = new DocumentImpl(new Reference(docId.toString(), version.toString()), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
+                    Document document = new DocumentImpl(new Reference(docId.toString(), version.toString()), Instant.now(), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
                     filestore.put(version, document, info);
                     db.createDocument(docId, version, mediaType, info.length, info.digest, metadata);
                     DocumentLink result = db.createDocumentLink(folderId, part.name, docId, version, DatabaseInterface.GET_LINK);
                     db.commit();
-                    return result;
+                    return LOG.exit(result);
                 } else {
-                    throw new Exceptions.InvalidObjectName(path);
+                    throw LOG.throwing(new Exceptions.InvalidObjectName(path));
                 }
             }
         } catch (SQLException e) {
@@ -365,6 +396,7 @@ public class SQLRepositoryService implements RepositoryService {
 
     @Override
     public DocumentLink updateDocumentLink(RepositoryPath path, Reference reference, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
+        LOG.entry(path, reference, Options.loggable(options));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {    
@@ -383,7 +415,7 @@ public class SQLRepositoryService implements RepositoryService {
                 result = Optional.of(db.createDocumentLink(folderId, part.name, docId, versionId, DatabaseInterface.GET_LINK));
             }
             db.commit();               
-            return result.orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
+            return LOG.exit(result.orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path))));
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
@@ -616,17 +648,12 @@ public class SQLRepositoryService implements RepositoryService {
                 // Unfortunately this is supposed to return the most recent matching doc,
                 // and since we don't plan to convert all metadata into database columns,
                 // we can't do this until AFTER the filter operation is applied to the stream.
-                final Comparator<Timestamped<Document>> SORT = (ta,tb)->ta.timestamp.compareTo(tb.timestamp);
-                final Function<Timestamped<Document>,String> GROUP = t->t.value.getReference().id;
-                try (Stream<Timestamped<Document>> versions = db.getDocuments(query, true, DatabaseInterface.getTimestamped(DatabaseInterface.GET_DOCUMENT))) {
+                try (Stream<Document> versions = db.getDocuments(query, searchHistory, DatabaseInterface.GET_DOCUMENT)) {
                     docs = versions
-                        .filter(ts->query.containsItem(ts.value.toJson(this,0,1)))
-                        .collect(Collectors.groupingBy(GROUP, Collectors.maxBy(SORT)))
+                        .filter(filterBy(query))
+                        .collect(mostRecentDocument())
                         .values()
-                        .stream()
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .map(ts->ts.value);
+                        .stream();
                 }
             } else {
                 docs = db.getDocuments(query, searchHistory, DatabaseInterface.GET_DOCUMENT)
@@ -641,24 +668,45 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
         LOG.entry(path, Options.loggable(options));
+        boolean optReturnAll = Options.RETURN_ALL_VERSIONS.isIn(options);
+        boolean optSearchAll = Options.SEARCH_OLD_VERSIONS.isIn(options);
         boolean hasDocumentId = path.size() > 1 && path.part.getId().isPresent();
-        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !path.isEmpty() && !hasDocumentId) {
+        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !path.isEmpty() && !hasDocumentId && !optReturnAll) {
             if (path.isEmpty() || !path.find(RepositoryPath::isWildcard).isPresent()) {
                 path = path.add("*");
             }
-        }
-		
+        }		
         try (
-            DatabaseInterface db = dbFactory.getInterface(); 
+            DatabaseInterface db = dbFactory.getInterface();
         ) {
-            Stream<NamedRepositoryObject> links = db.getDocumentLinks(path, query, DatabaseInterface.GET_LINK)
-                .filter(link->query.containsItem(link.toJson(this,1,0)))
-                .map(NamedRepositoryObject.class::cast);
-            Stream<NamedRepositoryObject> workspaces = hasDocumentId 
-                ? Stream.empty() 
-                : db.getFolders(path, query, DatabaseInterface.GET_WORKSPACE)
-                    .filter(link->query.containsItem(link.toJson(this,1,0)))
+            Stream<NamedRepositoryObject> links;
+ 
+            if (optSearchAll && !optReturnAll) {
+                try (
+                    Stream<DocumentLink> rawLinks = db.getDocumentLinks(path, query, true, DatabaseInterface.GET_LINK)
+                ) {
+                    links = rawLinks             
+                        .map(link->LOG.exit(link))
+                        .filter(filterBy(query))
+                        .collect(mostRecentLink())
+                        .values()
+                        .stream()
+                        .map(NamedRepositoryObject.class::cast);                    
+                }
+            } else {
+                links = db.getDocumentLinks(path, query, optSearchAll || optReturnAll, DatabaseInterface.GET_LINK)
+                    .filter(filterBy(query))
                     .map(NamedRepositoryObject.class::cast);
+            }
+
+            Stream<NamedRepositoryObject> workspaces = Stream.empty();
+            
+            if (!hasDocumentId) {
+            
+                workspaces = db.getFolders(path, query, optSearchAll || optReturnAll, DatabaseInterface.GET_WORKSPACE)
+                        .filter(filterBy(query))
+                        .map(NamedRepositoryObject.class::cast);
+            }
             return LOG.exit(Stream.concat(links, workspaces));
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -672,7 +720,7 @@ public class SQLRepositoryService implements RepositoryService {
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {            
             Stream<Document> docs = db.getDocuments(Id.ofDocument(reference.id), query, DatabaseInterface.GET_DOCUMENT)
-                .filter(link->query.containsItem(link.toJson(this,1,0)));
+                .filter(filterBy(query));
             return LOG.exit(docs);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));

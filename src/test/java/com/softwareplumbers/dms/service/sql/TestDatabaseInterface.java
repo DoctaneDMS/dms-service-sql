@@ -66,7 +66,7 @@ public class TestDatabaseInterface {
             System.out.println(l0.sql);
             assertTrue(l0.sql.contains("? || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l0.sql.contains("VIEW_LINKS T0"));
-            assertTrue(l0.sql.contains("WHERE T0.NAME=? AND T0.PARENT_ID=? AND T0.VERSION=?"));
+            assertTrue(l0.sql.contains("WHERE T0.CURRENT=true AND T0.NAME=? AND T0.PARENT_ID=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
             assertEquals("path", l0.parameters[1]);
             assertEquals("parent.path", l0.parameters[2]);
@@ -75,7 +75,7 @@ public class TestDatabaseInterface {
             System.out.println(l1.sql);
             assertTrue(l1.sql.contains("? || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l1.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
-            assertTrue(l1.sql.contains("WHERE T0.NAME=? AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.VERSION=?"));
+            assertTrue(l1.sql.contains("WHERE T0.CURRENT=true AND T0.NAME=? AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
             assertEquals("path", l1.parameters[1]);
             assertEquals("parent.path", l1.parameters[2]);
@@ -86,7 +86,7 @@ public class TestDatabaseInterface {
             System.out.println(l2.sql);
             assertTrue(l2.sql.contains("? || '/' || T2.NAME || CASEWHEN(T2.VERSION='', '', '@' || T2.VERSION) || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l2.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID INNER JOIN VIEW_FOLDERS T2 ON T1.PARENT_ID = T2.ID"));
-            assertTrue(l2.sql.contains("WHERE T0.NAME=? AND T1.NAME=? AND T2.NAME=? AND T2.PARENT_ID=? AND T2.VERSION=? AND T1.VERSION=? AND T0.VERSION=?"));
+            assertTrue(l2.sql.contains("WHERE T0.CURRENT=true AND T0.NAME=? AND T1.NAME=? AND T2.NAME=? AND T2.PARENT_ID=? AND T2.VERSION=? AND T1.VERSION=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
             assertEquals("path", l2.parameters[1]);
             assertEquals("parent.path", l2.parameters[2]);
@@ -105,7 +105,7 @@ public class TestDatabaseInterface {
             System.out.println(l0.sql);
             assertTrue(l0.sql.contains("? || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l0.sql.contains("VIEW_LINKS T0"));
-            assertTrue(l0.sql.contains("WHERE T0.PARENT_ID=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
+            assertTrue(l0.sql.contains("WHERE T0.CURRENT=true AND T0.PARENT_ID=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
             assertEquals("parent.path", l0.parameters[1]);
             assertEquals("path", l0.parameters[2]);
@@ -114,7 +114,7 @@ public class TestDatabaseInterface {
             System.out.println(l1.sql);
             assertTrue(l1.sql.contains("? || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
             assertTrue(l1.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
-            assertTrue(l1.sql.contains("WHERE T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
+            assertTrue(l1.sql.contains("WHERE T0.CURRENT=true AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
             assertEquals("basePath", l1.parameters[0]);
             assertEquals("parent.path", l1.parameters[1]);
             assertEquals("parent.parent.path", l1.parameters[2]);

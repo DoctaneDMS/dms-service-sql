@@ -19,7 +19,8 @@
             <value>
                 DROP VIEW IF EXISTS VIEW_FOLDERS;
                 DROP VIEW IF EXISTS VIEW_LINKS;
-                DROP VIEW IF EXISTS VIEW_LINK_VERSIONS;
+                DROP VIEW IF EXISTS VIEW_VERSION_LINKS;
+                DROP VIEW IF EXISTS VIEW_DOCUMENT_LINKS;
                 DROP VIEW IF EXISTS VIEW_DOCUMENTS;
                 DROP TABLE IF EXISTS FOLDERS;
                 DROP TABLE IF EXISTS DOCUMENTS;
@@ -97,7 +98,7 @@
                     DOCUMENTS ON (VERSIONS.ID = DOCUMENTS.LATEST_VERSION)
                 ;
                 
-                CREATE OR REPLACE VIEW VIEW_LINK_VERSIONS AS SELECT
+                CREATE OR REPLACE VIEW VIEW_DOCUMENT_LINKS AS SELECT
                     NODES.ID AS ID,
                     NODES.PARENT_ID AS PARENT_ID,
                     NODES.NAME AS NAME,
@@ -111,16 +112,18 @@
                     VIEW_DOCUMENTS.LENGTH AS LENGTH,
                     VIEW_DOCUMENTS.DIGEST AS DIGEST,
                     VIEW_DOCUMENTS.CREATED AS CREATED,
-                    VIEW_DOCUMENTS.METADATA AS METADATA
+                    VIEW_DOCUMENTS.METADATA AS METADATA,
+                    VIEW_DOCUMENTS.LATEST AS LATEST
                 FROM
                     NODES 
                 INNER JOIN
                     LINKS ON (NODES.ID = LINKS.ID)
                 INNER JOIN
                     VIEW_DOCUMENTS ON (LINKS.DOCUMENT_ID = VIEW_DOCUMENTS.DOCUMENT_ID)
+                WHERE LINKS.VERSIONED=FALSE
                 ;
                            
-                CREATE OR REPLACE VIEW VIEW_LINKS AS SELECT
+                CREATE OR REPLACE VIEW VIEW_VERSION_LINKS AS SELECT
                     NODES.ID AS ID,
                     NODES.PARENT_ID AS PARENT_ID,
                     NODES.NAME AS NAME,
@@ -143,29 +146,44 @@
                     VERSIONS ON (LINKS.VERSION_ID = VERSIONS.ID)
                 WHERE
                     LINKS.VERSIONED = TRUE
-                UNION ALL SELECT
-                    NODES.ID AS ID,
-                    NODES.PARENT_ID AS PARENT_ID,
-                    NODES.NAME AS NAME,
-                    NODES.DELETED AS DELETED,
-                    NODES.VERSION AS VERSION,
-                    NODES.TYPE AS TYPE,
-                    LINKS.VERSIONED AS VERSIONED,
-                    VIEW_DOCUMENTS.DOCUMENT_ID AS DOCUMENT_ID,
-                    VIEW_DOCUMENTS.VERSION_ID AS VERSION_ID,
-                    VIEW_DOCUMENTS.MEDIA_TYPE AS MEDIA_TYPE,
-                    VIEW_DOCUMENTS.LENGTH AS LENGTH,
-                    VIEW_DOCUMENTS.DIGEST AS DIGEST,
-                    VIEW_DOCUMENTS.CREATED AS CREATED,
-                    VIEW_DOCUMENTS.METADATA AS METADATA
+                ;
+                
+                CREATE OR REPLACE VIEW VIEW_LINKS AS SELECT
+                    ID, 
+                    PARENT_ID, 
+                    NAME, 
+                    DELETED, 
+                    VERSION, 
+                    TYPE, 
+                    VERSIONED, 
+                    DOCUMENT_ID, 
+                    VERSION_ID, 
+                    MEDIA_TYPE, 
+                    LENGTH, 
+                    DIGEST, 
+                    CREATED, 
+                    METADATA,
+                    TRUE AS CURRENT 
                 FROM
-                    NODES 
-                INNER JOIN
-                    LINKS ON (NODES.ID = LINKS.ID)
-                INNER JOIN
-                    VIEW_DOCUMENTS ON (LINKS.DOCUMENT_ID = VIEW_DOCUMENTS.DOCUMENT_ID)
-                WHERE
-                    LINKS.VERSIONED = FALSE AND VIEW_DOCUMENTS.LATEST = TRUE
+                    VIEW_VERSION_LINKS
+                UNION ALL SELECT
+                    ID, 
+                    PARENT_ID, 
+                    NAME, 
+                    DELETED, 
+                    VERSION, 
+                    TYPE, 
+                    VERSIONED, 
+                    DOCUMENT_ID, 
+                    VERSION_ID, 
+                    MEDIA_TYPE, 
+                    LENGTH, 
+                    DIGEST, 
+                    CREATED, 
+                    METADATA,
+                    LATEST AS CURRENT 
+                FROM
+                    VIEW_DOCUMENT_LINKS
                 ;
 
                 CREATE OR REPLACE VIEW VIEW_FOLDERS AS SELECT
@@ -277,7 +295,7 @@
                         INSERT INTO LINKS (ID, DOCUMENT_ID, VERSION_ID, VERSIONED) 
                         SELECT ?, DOCUMENT_ID, VERSION_ID, TRUE
                         FROM VIEW_LINKS
-                        WHERE ID = ?                
+                        WHERE ID = ? AND VERSION='' AND CURRENT=TRUE                
                     </value>
                 </entry>
 
