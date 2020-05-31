@@ -21,6 +21,7 @@ import com.softwareplumbers.dms.RepositoryObject;
 import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.RepositoryPath.ElementType;
 import com.softwareplumbers.dms.RepositoryPath.NamedElement;
+import com.softwareplumbers.dms.RepositoryPath.Version;
 import com.softwareplumbers.dms.RepositoryService;
 import com.softwareplumbers.dms.Workspace;
 import com.softwareplumbers.dms.common.impl.DocumentImpl;
@@ -668,22 +669,34 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
         LOG.entry(path, Options.loggable(options));
-        boolean optReturnAll = Options.RETURN_ALL_VERSIONS.isIn(options);
-        boolean optSearchAll = Options.SEARCH_OLD_VERSIONS.isIn(options);
+
         boolean hasDocumentId = path.size() > 1 && path.part.getId().isPresent();
-        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !path.isEmpty() && !hasDocumentId && !optReturnAll) {
-            if (path.isEmpty() || !path.find(RepositoryPath::isWildcard).isPresent()) {
+        
+        boolean implicitVersionWildcard = Options.SEARCH_OLD_VERSIONS.isIn(options) || Options.RETURN_ALL_VERSIONS.isIn(options);
+        
+        // Unless NO_IMPLICIT_WILDCARD is set, we add an implicit wildcard unless:
+        // * The path already has a wildcard
+        // * The path ends in a document id  (...because a wildcard after a document id makes no sense)
+        // * We are adding an implicit version wildcard
+        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !implicitVersionWildcard && !path.isEmpty()) {
+            if (!hasDocumentId && !path.find(RepositoryPath::isWildcard).isPresent()) {
                 path = path.add("*");
             }
-        }		
+        }
+        
+        // if the SEARCH_OLD_VERSIONS or RETURN_ALL_VERSIONS option is set, we add an implicit version wildcard
+        if (implicitVersionWildcard && !path.isEmpty()) {
+            if (path.part.getVersion() == Version.NONE) path = path.setVersion("*");
+        }
+           
         try (
             DatabaseInterface db = dbFactory.getInterface();
         ) {
             Stream<NamedRepositoryObject> links;
  
-            if (optSearchAll && !optReturnAll) {
+            if (!Options.RETURN_ALL_VERSIONS.isIn(options)) {
                 try (
-                    Stream<DocumentLink> rawLinks = db.getDocumentLinks(path, query, true, DatabaseInterface.GET_LINK)
+                    Stream<DocumentLink> rawLinks = db.getDocumentLinks(path, query, DatabaseInterface.GET_LINK)
                 ) {
                     links = rawLinks             
                         .map(link->LOG.exit(link))
@@ -694,7 +707,7 @@ public class SQLRepositoryService implements RepositoryService {
                         .map(NamedRepositoryObject.class::cast);                    
                 }
             } else {
-                links = db.getDocumentLinks(path, query, optSearchAll || optReturnAll, DatabaseInterface.GET_LINK)
+                links = db.getDocumentLinks(path, query, DatabaseInterface.GET_LINK)
                     .filter(filterBy(query))
                     .map(NamedRepositoryObject.class::cast);
             }
@@ -703,7 +716,7 @@ public class SQLRepositoryService implements RepositoryService {
             
             if (!hasDocumentId) {
             
-                workspaces = db.getFolders(path, query, optSearchAll || optReturnAll, DatabaseInterface.GET_WORKSPACE)
+                workspaces = db.getFolders(path, query, DatabaseInterface.GET_WORKSPACE)
                         .filter(filterBy(query))
                         .map(NamedRepositoryObject.class::cast);
             }
