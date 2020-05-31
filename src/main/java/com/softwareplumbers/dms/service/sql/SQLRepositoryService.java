@@ -736,8 +736,6 @@ public class SQLRepositoryService implements RepositoryService {
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
             Info info = db.getInfo(path,DatabaseInterface.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
-            // THIS is a problem, we are losing the version information. But also, if we set version
-            // id we may cause something to assume the short path is a document id.
             RepositoryPath shortPath;
             switch(info.type) {
                 case WORKSPACE:
