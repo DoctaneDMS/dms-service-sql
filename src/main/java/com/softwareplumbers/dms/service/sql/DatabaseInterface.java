@@ -334,6 +334,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
     ParameterizedSQL getInfoSQL(RepositoryPath path) {
         int depth = path.getDocumentPath().size();
         ParameterizedSQL criteria = path.size() > 1 && path.part.getId().isPresent()
+            || path.part.getVersion().getId().isPresent()
             ? getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.LINK))
             : getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.NODE));
         ParameterizedSQL name =  getParametrizedNameExpression(path);

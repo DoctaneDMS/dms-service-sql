@@ -736,6 +736,7 @@ public class SQLRepositoryService implements RepositoryService {
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
             Info info = db.getInfo(path,DatabaseInterface.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
+            
             RepositoryPath shortPath = RepositoryPath.ROOT.addId(info.id.toString());
             switch(info.type) {
                 case WORKSPACE:
