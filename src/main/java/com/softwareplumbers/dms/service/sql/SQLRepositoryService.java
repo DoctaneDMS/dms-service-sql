@@ -669,29 +669,14 @@ public class SQLRepositoryService implements RepositoryService {
             throw LOG.throwing(new RuntimeException(e));
         }
     }
-
+    
     @Override
     public Stream<NamedRepositoryObject> catalogueByName(RepositoryPath path, Query query, Options.Search... options) throws Exceptions.InvalidWorkspace {
         LOG.entry(path, Options.loggable(options));
 
         boolean hasDocumentId = path.size() > 1 && path.part.getId().isPresent();
         
-        boolean implicitVersionWildcard = Options.SEARCH_OLD_VERSIONS.isIn(options) || Options.RETURN_ALL_VERSIONS.isIn(options);
-        
-        // Unless NO_IMPLICIT_WILDCARD is set, we add an implicit wildcard unless:
-        // * The path already has a wildcard
-        // * The path ends in a document id  (...because a wildcard after a document id makes no sense)
-        // * We are adding an implicit version wildcard
-        if (!Options.NO_IMPLICIT_WILDCARD.isIn(options) && !implicitVersionWildcard && !path.isEmpty()) {
-            if (!hasDocumentId && !path.find(RepositoryPath::isWildcard).isPresent()) {
-                path = path.add("*");
-            }
-        }
-        
-        // if the SEARCH_OLD_VERSIONS or RETURN_ALL_VERSIONS option is set, we add an implicit version wildcard
-        if (implicitVersionWildcard && !path.isEmpty()) {
-            if (path.part.getVersion() == Version.NONE) path = path.setVersion("*");
-        }
+        path = path.normalizeSearchPath(options);
            
         try (
             DatabaseInterface db = dbFactory.getInterface();
