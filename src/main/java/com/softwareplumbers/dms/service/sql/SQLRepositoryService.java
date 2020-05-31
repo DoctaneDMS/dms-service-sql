@@ -736,13 +736,16 @@ public class SQLRepositoryService implements RepositoryService {
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
             Info info = db.getInfo(path,DatabaseInterface.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
-            
-            RepositoryPath shortPath = RepositoryPath.ROOT.addId(info.id.toString());
+            // THIS is a problem, we are losing the version information. But also, if we set version
+            // id we may cause something to assume the short path is a document id.
+            RepositoryPath shortPath;
             switch(info.type) {
                 case WORKSPACE:
+                    shortPath = RepositoryPath.ROOT.addId(info.id.toString());
                     return LOG.exit(db.getFolder(shortPath, DatabaseInterface.GET_WORKSPACE)
                         .orElseThrow(()->new Exceptions.InvalidObjectName(shortPath)));
                 case DOCUMENT_LINK:
+                    shortPath = RepositoryPath.ROOT.addId(info.parent_id.toString()).add(path.part);
                     return LOG.exit(db.getDocumentLink(shortPath, DatabaseInterface.GET_LINK)
                         .orElseThrow(()->new Exceptions.InvalidObjectName(shortPath)));
                 default:
