@@ -62,8 +62,12 @@ public class SQLRepositoryService implements RepositoryService {
     private final DocumentDatabase dbFactory;
     private Filestore<Id> filestore;
       
-    private String getBaseName(JsonObject metadata) {
+    private String getBaseDocumentName(JsonObject metadata) {
         return metadata.getString("DocumentTitle", "Document.dat");
+    }
+
+    private String getBaseWorkspaceName(JsonObject metadata) {
+        return metadata.getString("EventDescription", "Folder");
     }
     
     private void maybeDestroyDocument(Id version) {
@@ -242,7 +246,7 @@ public class SQLRepositoryService implements RepositoryService {
         LOG.entry(workspaceName, mediaType, iss, metadata, Options.loggable(options));
         Id version = filestore.generateKey();
         Id id = new Id();
-        String baseName = getBaseName(metadata);
+        String baseName = getBaseDocumentName(metadata);
 
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
@@ -291,7 +295,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id versionId = Id.ofVersion(reference.version);
             Id folderId = Id.of(folder.getId());
             Document document = db.getDocument(docId, versionId, DatabaseInterface.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
-            String name = db.generateUniqueName(folderId, getBaseName(document.getMetadata()));
+            String name = db.generateUniqueName(folderId, getBaseDocumentName(document.getMetadata()));
             DocumentLink result = db.createDocumentLink(folderId, name, docId, versionId, DatabaseInterface.GET_LINK);
             db.commit();               
             return result;
@@ -497,7 +501,7 @@ public class SQLRepositoryService implements RepositoryService {
         ) {    
             Id folderId = db.getOrCreateFolder(workspacePath, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_ID)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(workspacePath));
-            String name = db.generateUniqueName(folderId, getBaseName(metadata));
+            String name = db.generateUniqueName(folderId, getBaseWorkspaceName(metadata));
             Workspace result = db.createFolder(folderId, name, state, metadata, DatabaseInterface.GET_WORKSPACE);
             db.commit();               
             return LOG.exit(result);

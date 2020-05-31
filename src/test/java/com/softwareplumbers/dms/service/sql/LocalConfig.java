@@ -61,6 +61,7 @@ public class LocalConfig {
     @Bean public TestModel documentMetadataModel() {
         TestModel.Field uniqueField = new TestModel.IdField("DocFaceRef");
         TestModel model = new TestModel(
+                new TestModel.StringField("DocumentTitle", "BillOfLading", "Invoice", "Purchase Order", "Insurance", "Manifest"),
                 new TestModel.StringField("TradeDescription", "BR001", "BR002", "BR003", "BR004"),
                 new TestModel.BooleanField("BankDocument"),
                 new TestModel.SessionIdField("BatchID"),
