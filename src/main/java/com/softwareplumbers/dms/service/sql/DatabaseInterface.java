@@ -154,8 +154,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         Id parent_id = Id.of(results.getBytes("PARENT_ID"));
         String name = results.getString("NAME");
         RepositoryObject.Type type = RepositoryObject.Type.valueOf(results.getString("TYPE"));
-        RepositoryPath path = RepositoryPath.valueOf(results.getString("PATH"));
-        return new Info(id, parent_id, name, path, type);
+        return new Info(id, parent_id, name, type);
     };
     
     Query getVersionQuery(Version version) {
@@ -327,6 +326,27 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         return new ParameterizedSQL(builder.toString(), "basePath");
     }
     
+    
+    String getDocumentNameExpression(RepositoryPath basePath, RepositoryPath path) {
+        StringBuilder builder = new StringBuilder();
+        int depth = path.afterRootId().size();
+        builder.append("'").append(basePath.toString()).append("'");      
+        for (int i = depth - 1; i > 0 ; i--)
+            builder.append(templates.getSQL(Template.nameExpr, Integer.toString(i)));
+        if (depth > 0) builder.append(templates.getSQL(Template.documentNameExpr, "0"));
+        return builder.toString();
+    }
+    
+    ParameterizedSQL getParametrizedDocumentNameExpression(RepositoryPath path) {
+        StringBuilder builder = new StringBuilder();
+        int depth = path.afterRootId().size();
+        builder.append("?");      
+        for (int i = depth - 1; i > 0 ; i--)
+            builder.append(templates.getSQL(Template.nameExpr, Integer.toString(i)));
+        if (depth > 0) builder.append(templates.getSQL(Template.documentNameExpr, "0"));
+        return new ParameterizedSQL(builder.toString(), "basePath");
+    }    
+    
     Query getDBFilterExpression(Iterable<QualifiedName> validFields, Query filter) {
         return StreamSupport.stream(validFields.spliterator(), false).reduce(Query.UNBOUNDED, (query, name) -> query.intersect(filter.getConstraint(name)), (query1, query2)->query1.intersect(query2));
     }
@@ -337,8 +357,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
             || !path.isEmpty() && path.part.getVersion().getId().isPresent()
             ? getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.LINK))
             : getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.NODE));
-        ParameterizedSQL name =  getParametrizedNameExpression(path);
-        return templates.getParameterizedSQL(Template.fetchInfo, name, criteria);
+        return templates.getParameterizedSQL(Template.fetchInfo, criteria);
     }
     
     ParameterizedSQL getDocumentLinkSQL(RepositoryPath path) {
@@ -613,7 +632,6 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         if (!basePath.isPresent()) return LOG.exit(Optional.empty());
         ParameterizedSQL sql = getInfoSQL(name);
         try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
-            .set(1, basePath.get().toString())
             .set(Types.PATH, "path", name)
             .execute(con, mapper)) {
             return LOG.exit(results.findFirst());
@@ -691,8 +709,8 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
             .execute(con, GET_INFO)
             .collect(Collectors.toList());
         for (Info child : children) {
-            RepositoryPath srcPath = RepositoryPath.ROOT.addId(idSrc.toString()).addAll(child.path);
-            RepositoryPath tgtPath = RepositoryPath.ROOT.addId(id.toString()).addAll(child.path);
+            RepositoryPath srcPath = RepositoryPath.ROOT.addId(idSrc.toString()).add(child.name);
+            RepositoryPath tgtPath = RepositoryPath.ROOT.addId(id.toString()).add(child.name);
             switch(child.type) {
                 case WORKSPACE:
                     copyFolder(srcPath, tgtPath, false, GET_ID);

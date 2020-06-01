@@ -67,6 +67,7 @@ public class DocumentDatabase extends AbstractDatabase<DocumentDatabase.Type, Do
         fetchFolder,
         fetchInfo,
         fetchDocument,
-        nameExpr       
+        nameExpr,
+        documentNameExpr
     }   
 }

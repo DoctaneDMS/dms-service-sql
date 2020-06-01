@@ -15,15 +15,13 @@ import com.softwareplumbers.dms.RepositoryPath;
 public class Info {
     public final Id id;
     public final Id parent_id;
-    public final String name;
-    public final RepositoryPath path;
     public final RepositoryObject.Type type;
+    public final String name;
     
-    public Info(Id id, Id parent_id, String name, RepositoryPath path, RepositoryObject.Type type) {
+    public Info(Id id, Id parent_id, String name, RepositoryObject.Type type) {
         this.id = id;
         this.parent_id = parent_id;
-        this.name = name;
-        this.path = path;
         this.type = type;
+        this.name = name;
     }
 }

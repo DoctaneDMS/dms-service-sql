@@ -455,8 +455,7 @@
                             T0.NAME,
                             T0.VERSION,
                             T0.DELETED, 
-                            T0.TYPE,
-                            !{0} AS PATH
+                            T0.TYPE
                         !{1}
                     </value>
                 </entry>
@@ -475,6 +474,9 @@
                 </entry>
                 <entry key="nameExpr">
                     <value> || '/' || T!{0}.NAME || CASEWHEN(T!{0}.VERSION='', '', '@' || T!{0}.VERSION)</value>
+                </entry>
+                <entry key="documentNameExpr">
+                    <value> || '/' || T!{0}.NAME || CASEWHEN(T!{0}.VERSION='', CASEWHEN(T!{0}.CURRENT, '', '@~' || T!{0}.VERSION_ID), '@' || T!{0}.VERSION)</value>
                 </entry>
             </map>
         </constructor-arg>
