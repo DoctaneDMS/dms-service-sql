@@ -87,7 +87,7 @@ public class SQLRepositoryService implements RepositoryService {
     }
     
     private Collector<DocumentLink, ?, Map<RepositoryPath, Document>> mostRecentLink() {        
-        return Collectors.toMap(document->document.getName(), v->v, SQLRepositoryService::mostRecent);
+        return Collectors.toMap(document->document.getName().currentVersion(), v->v, SQLRepositoryService::mostRecent);
     }
 
     private int parentLevels(Query query) {

@@ -368,7 +368,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         // This test is only needed 
         //Type typeRequested = path.part.getVersion() != Version.NONE ? Type.DOCUMENT_LINK : Type.VERSION_LINK;
         ParameterizedSQL criteria = query.toExpression(schema.getFormatter(Type.LINK));
-        ParameterizedSQL name =  getParametrizedNameExpression(path);
+        ParameterizedSQL name =  getParametrizedDocumentNameExpression(path);
         return templates.getParameterizedSQL(Template.fetchDocumentLink, name, criteria);
     }
     
@@ -397,7 +397,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
                 .intersect(getVersionQuery(nameWithPatterns))
                 .intersect(getDeletedQuery(nameWithPatterns));
         };
-        return templates.getSQL(Template.fetchDocumentLink, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(Type.LINK)).sql);
+        return templates.getSQL(Template.fetchDocumentLink, getDocumentNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(Type.LINK)).sql);
     }
     
     ParameterizedSQL getFolderSQL(RepositoryPath path) {

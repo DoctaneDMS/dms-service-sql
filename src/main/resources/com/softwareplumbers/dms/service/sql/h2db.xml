@@ -456,7 +456,7 @@
                             T0.VERSION,
                             T0.DELETED, 
                             T0.TYPE
-                        !{1}
+                        !{0}
                     </value>
                 </entry>
                 <entry key="fetchDocument">
