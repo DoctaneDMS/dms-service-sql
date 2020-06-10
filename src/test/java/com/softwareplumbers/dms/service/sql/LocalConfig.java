@@ -7,7 +7,6 @@ import com.softwareplumbers.dms.common.test.TestModel;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import javax.sql.DataSource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportResource;
@@ -25,28 +24,23 @@ import org.springframework.context.annotation.ImportResource;
 @ImportResource({"classpath:com/softwareplumbers/dms/service/sql/h2db.xml","classpath:com/softwareplumbers/dms/service/sql/entities.xml"})
 public class LocalConfig {
     
-    @Autowired
-    OperationStore<DocumentDatabase.Operation> operations;
-    
-    @Autowired
-    TemplateStore<DocumentDatabase.Template> templates;
-    
-    @Autowired
-    Schema schema;
-
     @Bean public Filestore filestore() {
         return new LocalFilesystem(Paths.get("/var/tmp/doctane/filestore"));
     }
     
-    @Bean public DocumentDatabase database() {
+    @Bean public DocumentDatabase database(
+        OperationStore<DocumentDatabase.Operation> operations,
+        TemplateStore<DocumentDatabase.Template> templates,
+        Schema schema
+    ) {
         DocumentDatabase database = new DocumentDatabase(schema);
         database.setOperations(operations);
         database.setTemplates(templates);
         return database;
     }
     
-    @Bean public SQLRepositoryService service() throws SQLException {
-        return new SQLRepositoryService(database(), filestore());
+    @Bean public SQLRepositoryService service(DocumentDatabase database, Filestore filestore) throws SQLException {
+        return new SQLRepositoryService(database, filestore);
     }
      
     @Bean public DataSource datasource() {
