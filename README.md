@@ -5,20 +5,18 @@ metadata. Actual document files are stored using a separate service; this packag
 also contains an implementation of this service which uses the server's local file system
 as a document store. 
 
-This service is the _default service_ for the Doctane REST server (rest-server-dms).
+This service is the _default service_ for the Doctane REST server for documents (rest-server-dms).
 When build as a standalone spring boot application with the default configuration,
 rest-server-dms will use this service to store documents. See the rest-server-dms
 package [here](https://projects.softwareplumbers.com/document-management/rest-server-dms)
-for information about installing Doctane REST server.
+for information about installing the Doctane REST server for documents.
 
 ## Configuration
 
 ### services.xml
 
-The services.xml file contains several spring bean definitions for the sql service module. It
-is See [Doctane Core](https://projects.softwareplumbers.com/document-management/rest-server-core) 
-for information on configuring the core server. Additional configuration related to this 
-service module is described below:
+The services.xml file contains several spring bean definitions for the sql service module. 
+Additional configuration related to this service module is described below:
 
 Firstly, we must import the database scripts needed to create and the database schema
 and the SQL statements necessary to implement common Doctane operations on the database.
