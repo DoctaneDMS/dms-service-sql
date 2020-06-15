@@ -482,8 +482,8 @@
         </constructor-arg>
     </bean>
 
-    <bean id="Schema" class="com.softwareplumbers.common.sql.Schema"> 
-        <qualifier value="dms"/>
+    <bean id="dms.schema" class="com.softwareplumbers.common.sql.Schema"> 
+        <constructor-arg ref="dms.datasource"/>
         <property name="createScript" ref="dms.createScript"/>
         <property name="updateScript" ref="dms.updateScript"/>
         <property name="dropScript" ref="dms.dropScript"/>
