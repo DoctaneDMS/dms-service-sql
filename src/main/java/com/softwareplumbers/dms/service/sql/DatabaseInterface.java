@@ -65,7 +65,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
     private static final byte[] ROOT_ID = new byte[] { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
     private static final Range NULL_VERSION = Range.equals(Json.createValue(""));
     private static final RepositoryPath ROOT_PATH = RepositoryPath.ROOT.addId(Id.ROOT_ID.toString());
-    private static final Workspace ROOT_WORKSPACE = new WorkspaceImpl(Id.ROOT_ID.toString(), null, RepositoryPath.ROOT, Workspace.State.Open, Constants.EMPTY_METADATA, true, LocalData.NONE);
+    private static final Workspace ROOT_WORKSPACE = new WorkspaceImpl(Id.ROOT_ID.toString(), null, RepositoryPath.ROOT, false, Workspace.State.Open, Constants.EMPTY_METADATA, true, LocalData.NONE);
 
     public static JsonObject toJson(Reader reader) {
         try (JsonReader jsonReader = Json.createReader(reader)) {
@@ -122,11 +122,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         Id id = new Id(results.getBytes("ID"));
         String version = results.getString("VERSION");
         Instant updateTime = results.getTimestamp("CREATED").toInstant();
-        
+        boolean deleted = results.getBoolean("DELETED");
+                
         Optional<RepositoryPath.IdElement> rootId = basePath.getRootId();
                 
         RepositoryPath name = basePath.addAll(RepositoryPath.valueOf(results.getString("PATH")));
-        return new DocumentLinkImpl(id.toString(), version, name, new Reference(docId.toString(),docVersion), updateTime, mediaType, length, hash, metadata, false, LocalData.NONE);
+        return new DocumentLinkImpl(id.toString(), version, name, deleted, new Reference(docId.toString(),docVersion), updateTime, mediaType, length, hash, metadata, false, LocalData.NONE);
     }
     
     public static Mapper<DocumentLink> GET_LINK = rs -> getLink(rs, RepositoryPath.ROOT);
@@ -146,7 +147,8 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
         Workspace.State state = Workspace.State.valueOf(results.getString("STATE"));
         RepositoryPath path = RepositoryPath.valueOf(results.getString("PATH"));
-        return new WorkspaceImpl(id.toString(), version, path, state, metadata, false, LocalData.NONE);
+        boolean deleted = results.getBoolean("DELETED");
+        return new WorkspaceImpl(id.toString(), version, path, deleted, state, metadata, false, LocalData.NONE);
     };
     
     public static Mapper<Info> GET_INFO = results -> {
@@ -154,7 +156,8 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         Id parent_id = Id.of(results.getBytes("PARENT_ID"));
         String name = results.getString("NAME");
         RepositoryObject.Type type = RepositoryObject.Type.valueOf(results.getString("TYPE"));
-        return new Info(id, parent_id, name, type);
+        boolean deleted = results.getBoolean("DELETED");
+        return new Info(id, parent_id, name, type, deleted);
     };
     
     Query getVersionQuery(Version version) {
@@ -253,7 +256,8 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         
         Query result = Query.from("parent", getDeletedQuery(name.parent));
         
-        result = result.intersect(Query.from("deleted", Range.equals(JsonValue.FALSE)));
+        if (name.part.getVersion() == Version.NONE)
+            result = result.intersect(Query.from("deleted", Range.equals(JsonValue.FALSE)));
         
         return result;
     }     

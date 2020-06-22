@@ -47,6 +47,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import org.slf4j.ext.XLogger;
+import org.slf4j.ext.XLogger.Level;
 import org.slf4j.ext.XLoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Required;
@@ -229,8 +230,20 @@ public class SQLRepositoryService implements RepositoryService {
             Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), Instant.now(), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
             filestore.put(version, document, info);
             db.createDocument(id, version, mediaType, info.length, info.digest, metadata);
-            
-            DocumentLink result = db.createDocumentLink(Id.of(folder.getId()), linkPart.name, Id.ofDocument(document.getReference().id), Id.ofVersion(document.getReference().version), DatabaseInterface.GET_LINK);
+            Id folderId = Id.of(folder.getId());
+            DocumentLink result;
+            try {
+                result = db.createDocumentLink(folderId, linkPart.name, id, version, DatabaseInterface.GET_LINK);
+            } catch (SQLIntegrityConstraintViolationException e) {
+                LOG.catching(Level.TRACE, e);
+                Info existing = db.getInfo(path, DatabaseInterface.GET_INFO)
+                    .orElseThrow(()->LOG.throwing(e));
+                if (existing.deleted)
+                    result = db.updateDocumentLink(folderId, linkPart.name, id, version, DatabaseInterface.GET_LINK)
+                        .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
+                else 
+                    throw LOG.throwing(new Exceptions.InvalidObjectName(path));
+            }
             db.commit();
             return result;
         } catch (SQLException e) {
@@ -318,7 +331,19 @@ public class SQLRepositoryService implements RepositoryService {
             Id versionId = filestore.parseKey(reference.version);
             //Document document = db.getDocument(docId, versionId, DatabaseInterface.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
             NamedElement namePart = (NamedElement)path.part;
-            DocumentLink result = db.createDocumentLink(folderId, namePart.name, docId, versionId, DatabaseInterface.GET_LINK);
+            DocumentLink result;
+            try {
+                result = db.createDocumentLink(folderId, namePart.name, docId, versionId, DatabaseInterface.GET_LINK);
+            } catch (SQLIntegrityConstraintViolationException e) {
+                LOG.catching(Level.TRACE, e);
+                Info existing = db.getInfo(path, DatabaseInterface.GET_INFO)
+                    .orElseThrow(()->LOG.throwing(e));
+                if (existing.deleted)
+                    result = db.updateDocumentLink(folderId, namePart.name, docId, versionId, DatabaseInterface.GET_LINK)
+                        .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
+                else 
+                    throw LOG.throwing(new Exceptions.InvalidObjectName(path));
+            }
             db.commit();
             return result;
         } catch (SQLException e) {

@@ -17,11 +17,13 @@ public class Info {
     public final Id parent_id;
     public final RepositoryObject.Type type;
     public final String name;
+    public final boolean deleted;
     
-    public Info(Id id, Id parent_id, String name, RepositoryObject.Type type) {
+    public Info(Id id, Id parent_id, String name, RepositoryObject.Type type, boolean deleted) {
         this.id = id;
         this.parent_id = parent_id;
         this.type = type;
         this.name = name;
+        this.deleted = deleted;
     }
 }
