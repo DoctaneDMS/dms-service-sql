@@ -837,4 +837,54 @@ public class SQLRepositoryService implements RepositoryService {
             throw LOG.throwing(new RuntimeException(e));
         }
     }    
+
+    @Override
+    public DocumentLink renameDocumentLink(RepositoryPath path, RepositoryPath targetPath, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidObjectName {
+        LOG.entry(path, targetPath, options);
+        try (
+            DatabaseInterface db = dbFactory.getInterface(); 
+        ) { 
+            DocumentLink result = db.copyDocumentLink(path, targetPath, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_LINK);
+            db.deleteObject(path);
+            db.commit();
+            return LOG.exit(result);
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
+    }
+
+    @Override
+    public Workspace renameWorkspace(RepositoryPath path, RepositoryPath targetPath, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidObjectName {
+        LOG.entry(path, targetPath, options);
+        try (
+            DatabaseInterface db = dbFactory.getInterface(); 
+        ) { 
+            Workspace result = db.copyFolder(path, targetPath, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_WORKSPACE);
+            db.deleteObject(path);
+            db.commit();
+            return LOG.exit(result);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            throw new Exceptions.InvalidWorkspace(targetPath);
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }  
+    }
+
+    @Override
+    public NamedRepositoryObject renameObject(RepositoryPath path, RepositoryPath targetPath, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidObjectName {
+        LOG.entry(path, path, targetPath, options);
+        try (
+            DatabaseInterface db = dbFactory.getInterface(); 
+        ) { 
+            Info info = db.getInfo(path, DatabaseInterface.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
+            switch (info.type) {
+                case DOCUMENT_LINK: renameDocumentLink(path, targetPath, options);
+                case WORKSPACE: renameWorkspace(path, targetPath, options);
+                default:
+                    throw LOG.throwing(new RuntimeException("Don't know how to rename " + info.type.toString()));
+            }
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
+    }
 }
