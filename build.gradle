@@ -103,7 +103,7 @@ dependencyManagement {
 }
 
 dependencies {
-    compile group: 'com.softwareplumbers.oss', name: 'dms-interface-core', version: 'master-SNAPSHOT'
+    compile group: 'com.softwareplumbers.oss', name: 'dms-interface-core', version: '0.9.6'
     compile group: 'com.softwareplumbers.oss', name: 'fluent-statement', version: '0.0.13'
     compile group: 'javax.json', name: 'javax.json-api', version: '1.1.2'
     compile group: 'org.apache.commons', name: 'commons-text', version: '1.8'
@@ -113,7 +113,7 @@ dependencies {
 
     testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-jdbc'
     testCompile group: 'org.springframework.boot', name: 'spring-boot-starter-test'
-    testCompile group: 'com.softwareplumbers.oss', name: 'dms-interface-core', version: 'master-SNAPSHOT', classifier: 'tests'
+    testCompile group: 'com.softwareplumbers.oss', name: 'dms-interface-core', version: '0.9.6', classifier: 'tests'
     testCompile group: 'com.h2database', name: 'h2', version: '1.4.200'
     testCompile group: 'com.zaxxer', name: 'HikariCP', version: '3.4.2'
 }
