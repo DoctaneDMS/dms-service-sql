@@ -707,10 +707,10 @@ public class SQLRepositoryService implements RepositoryService {
             DatabaseInterface db = dbFactory.getInterface();
         ) {
             Stream<NamedRepositoryObject> links;
- 
+            boolean includeDeleted = Options.INCLUDE_DELETED.isIn(options);
             if (!Options.RETURN_ALL_VERSIONS.isIn(options)) {
                 try (
-                    Stream<DocumentLink> rawLinks = db.getDocumentLinks(path, query, DatabaseInterface.GET_LINK)
+                    Stream<DocumentLink> rawLinks = db.getDocumentLinks(path, query, includeDeleted, DatabaseInterface.GET_LINK)
                 ) {
                     links = rawLinks             
                         .map(link->LOG.exit(link))
@@ -721,7 +721,7 @@ public class SQLRepositoryService implements RepositoryService {
                         .map(NamedRepositoryObject.class::cast);                    
                 }
             } else {
-                links = db.getDocumentLinks(path, query, DatabaseInterface.GET_LINK)
+                links = db.getDocumentLinks(path, query, includeDeleted, DatabaseInterface.GET_LINK)
                     .filter(filterBy(query))
                     .map(NamedRepositoryObject.class::cast);
             }
@@ -730,7 +730,7 @@ public class SQLRepositoryService implements RepositoryService {
             
             if (!hasDocumentId) {
             
-                workspaces = db.getFolders(path, query, DatabaseInterface.GET_WORKSPACE)
+                workspaces = db.getFolders(path, query, includeDeleted, DatabaseInterface.GET_WORKSPACE)
                         .filter(filterBy(query))
                         .map(NamedRepositoryObject.class::cast);
             }

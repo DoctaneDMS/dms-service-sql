@@ -389,7 +389,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(Type.VERSION)).sql);
     }
         
-    String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter) {
+    String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean includeDeleted) {
         filter = getDBFilterExpression(schema.getFields(Type.LINK), filter);
         // unless there is a wildcard in the version string for the final part of the address,
         // the intention of the user is probably to retrieve the current version of the document
@@ -398,9 +398,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         if (!nameWithPatterns.isEmpty()) {
             filter = filter
                 .intersect(getNameQuery(nameWithPatterns))
-                .intersect(getVersionQuery(nameWithPatterns))
-                .intersect(getDeletedQuery(nameWithPatterns));
+                .intersect(getVersionQuery(nameWithPatterns));
         };
+        if (!includeDeleted) {
+            filter = filter            
+                .intersect(getDeletedQuery(nameWithPatterns));
+        }
         return templates.getSQL(Template.fetchDocumentLink, getDocumentNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(Type.LINK)).sql);
     }
     
@@ -411,12 +414,15 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         return templates.getParameterizedSQL(Template.fetchFolder, name, criteria);
     }
 
-    String searchFolderSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter) {
+    String searchFolderSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean includeDeleted) {
         filter = getDBFilterExpression(schema.getFields(Type.FOLDER), filter);
         if (!nameWithPatterns.isEmpty()) {
             filter=filter
                 .intersect(getNameQuery(nameWithPatterns))            
-                .intersect(getVersionQuery(nameWithPatterns))
+                .intersect(getVersionQuery(nameWithPatterns));
+        }
+        if (!includeDeleted) {
+            filter = filter
                 .intersect(getDeletedQuery(nameWithPatterns));
         }
         return templates.getSQL(Template.fetchFolder, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(Type.FOLDER)).sql);
@@ -603,12 +609,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         }
     }
     
-    public <T> Stream<T> getFolders(RepositoryPath path, Query filter, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, SQLException {
+    public <T> Stream<T> getFolders(RepositoryPath path, Query filter, boolean includeDeleted, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, SQLException {
         LOG.entry(path, mapper);
         if (path.isEmpty()) {
             // free search
             Stream<T> result = FluentStatement
-                .of(searchFolderSQL(RepositoryPath.ROOT, path, filter))
+                .of(searchFolderSQL(RepositoryPath.ROOT, path, filter, includeDeleted))
                 .execute(schema.datasource, mapper);
             if (mapper == GET_WORKSPACE) {
                 // Can't do this in simple map because of connection issues with deferred execution.
@@ -624,7 +630,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
             // no base path implies we have an invalid root which does not exist
             if (!basePath.isPresent()) return LOG.exit(Stream.empty());
             Stream<T> result = FluentStatement
-                .of(searchFolderSQL(basePath.get(), path, filter))
+                .of(searchFolderSQL(basePath.get(), path, filter, includeDeleted))
                 .execute(schema.datasource, mapper);
             return LOG.exit(result);
         }
@@ -972,12 +978,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         }
     }
     
-    public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, Mapper<T> mapper) throws SQLException {
+    public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, boolean includeDeleted, Mapper<T> mapper) throws SQLException {
         LOG.entry(path, filter, mapper);
         
         if (path.isEmpty()) {
             Stream<T> result = FluentStatement
-                .of(searchDocumentLinkSQL(RepositoryPath.ROOT, path, filter))
+                .of(searchDocumentLinkSQL(RepositoryPath.ROOT, path, filter, includeDeleted))
                 .execute(schema.datasource, mapper);
             if (mapper == GET_LINK) {
                 // Can't do this in simple map because of connection issues with deferred execution.
@@ -992,7 +998,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
             Optional<RepositoryPath> basePath = getBasePath(path, mapper);
             if (!basePath.isPresent()) return LOG.exit(Stream.empty());
             Stream<T> result = FluentStatement
-                .of(searchDocumentLinkSQL(basePath.get(), path, filter))
+                .of(searchDocumentLinkSQL(basePath.get(), path, filter, includeDeleted))
                 .execute(schema.datasource, mapper);
             return result;
         }        
