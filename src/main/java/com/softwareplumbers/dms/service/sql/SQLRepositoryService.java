@@ -213,7 +213,7 @@ public class SQLRepositoryService implements RepositoryService {
         Id id = new Id();
         Reference reference = new Reference(id.toString(), version.toString());
         if (metadata == null) metadata = JsonObject.EMPTY_JSON_OBJECT;
-
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
@@ -260,6 +260,7 @@ public class SQLRepositoryService implements RepositoryService {
         Id version = filestore.generateKey();
         Id id = new Id();
         String baseName = getBaseDocumentName(metadata);
+        if (workspaceName.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(workspaceName, Workspace.State.Published));
 
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
@@ -288,6 +289,8 @@ public class SQLRepositoryService implements RepositoryService {
 
     @Override
     public DocumentLink createDocumentLinkAndName(RepositoryPath workspaceName, Reference reference, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidReference {
+        LOG.entry(workspaceName, reference, Options.loggable(options));
+        if (workspaceName.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(workspaceName, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {    
@@ -319,6 +322,8 @@ public class SQLRepositoryService implements RepositoryService {
 
     @Override
     public DocumentLink createDocumentLink(RepositoryPath path, Reference reference, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidReference, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        LOG.entry(path, reference, Options.loggable(options));
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {    
@@ -367,6 +372,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public DocumentLink updateDocumentLink(RepositoryPath path, String mediaType, InputStreamSupplier iss, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         LOG.entry(path, mediaType, iss, metadata, Options.loggable(options));
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         Id version = filestore.generateKey();
 
         try (
@@ -456,6 +462,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public NamedRepositoryObject copyObject(RepositoryPath path, RepositoryPath targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(path, path, targetPath, createParent);
+        if (targetPath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(targetPath, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) { 
@@ -474,6 +481,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public DocumentLink copyDocumentLink(RepositoryPath path, RepositoryPath targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(path, targetPath, createParent);
+        if (targetPath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(targetPath, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) { 
@@ -488,6 +496,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Workspace copyWorkspace(RepositoryPath path, RepositoryPath targetPath, boolean createParent) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(path, targetPath, createParent);
+        if (targetPath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(targetPath, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) { 
@@ -504,6 +513,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Workspace createWorkspaceByName(RepositoryPath path, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
         LOG.entry(path, state, metadata, Options.loggable(options));
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
@@ -521,6 +531,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Workspace createWorkspaceAndName(RepositoryPath workspacePath, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
         LOG.entry(workspacePath, state, metadata, Options.loggable(options));
+        if (workspacePath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(workspacePath, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {    
@@ -536,8 +547,9 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Workspace updateWorkspaceByName(RepositoryPath path, Workspace.State state, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace {
+    public Workspace updateWorkspaceByName(RepositoryPath path, Workspace.State state, JsonObject metadata, Options.Update... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
         LOG.entry(path, state, metadata, Options.loggable(options));
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         boolean createMissing = Options.CREATE_MISSING_ITEM.isIn(options);
 
         try (
@@ -579,6 +591,7 @@ public class SQLRepositoryService implements RepositoryService {
 
     @Override
     public void deleteDocument(RepositoryPath workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
+        if (workspacePath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(workspacePath, Workspace.State.Published));
         LOG.entry(workspacePath, documentId);
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
@@ -596,6 +609,7 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public void deleteObjectByName(RepositoryPath path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         LOG.entry(path);
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         if (path.isEmpty()) throw new Exceptions.InvalidObjectName(path);
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
@@ -841,6 +855,8 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public DocumentLink renameDocumentLink(RepositoryPath path, RepositoryPath targetPath, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidObjectName {
         LOG.entry(path, targetPath, options);
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
+        if (targetPath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(targetPath, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) { 
@@ -856,6 +872,8 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public Workspace renameWorkspace(RepositoryPath path, RepositoryPath targetPath, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidObjectName {
         LOG.entry(path, targetPath, options);
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
+        if (targetPath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(targetPath, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) { 
@@ -873,6 +891,8 @@ public class SQLRepositoryService implements RepositoryService {
     @Override
     public NamedRepositoryObject renameObject(RepositoryPath path, RepositoryPath targetPath, Options.Create... options) throws Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState, Exceptions.InvalidObjectName {
         LOG.entry(path, path, targetPath, options);
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
+        if (targetPath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(targetPath, Workspace.State.Published));
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) { 
