@@ -198,8 +198,11 @@ public class SQLRepositoryService implements RepositoryService {
             if (current.isPresent()) {
                 return LOG.exit(current.get());
             } else {
-                // TODO: check if workspace path is valid and return appropriate exception
-                throw LOG.throwing(new Exceptions.InvalidObjectName(workspacePath));
+                if (db.getFolder(workspacePath.parent, DatabaseInterface.GET_ID).isPresent()) {
+                    throw LOG.throwing(new Exceptions.InvalidObjectName(workspacePath));
+                } else {
+                    throw LOG.throwing(new Exceptions.InvalidWorkspace(workspacePath.parent));
+                }
             }
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
@@ -774,19 +777,26 @@ public class SQLRepositoryService implements RepositoryService {
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
-            Info info = db.getInfo(path,DatabaseInterface.GET_INFO).orElseThrow(()->new Exceptions.InvalidObjectName(path));
-            RepositoryPath shortPath;
-            switch(info.type) {
-                case WORKSPACE:
-                    shortPath = RepositoryPath.ROOT.addId(info.id.toString());
-                    return LOG.exit(db.getFolder(shortPath, DatabaseInterface.GET_WORKSPACE)
-                        .orElseThrow(()->new Exceptions.InvalidObjectName(shortPath)));
-                case DOCUMENT_LINK:
-                    shortPath = RepositoryPath.ROOT.addId(info.parent_id.toString()).add(path.part);
-                    return LOG.exit(db.getDocumentLink(shortPath, DatabaseInterface.GET_LINK)
-                        .orElseThrow(()->new Exceptions.InvalidObjectName(shortPath)));
-                default:
-                    throw LOG.throwing(new RuntimeException("Don't know how to get " + info.type));
+            Optional<Info> info = db.getInfo(path,DatabaseInterface.GET_INFO);
+            if (info.isPresent()) {
+                RepositoryPath shortPath;
+                switch(info.get().type) {
+                    case WORKSPACE:
+                        shortPath = RepositoryPath.ROOT.addId(info.get().id.toString());
+                        return LOG.exit(db.getFolder(shortPath, DatabaseInterface.GET_WORKSPACE)
+                            .orElseThrow(()->new Exceptions.InvalidObjectName(shortPath)));
+                    case DOCUMENT_LINK:
+                        shortPath = RepositoryPath.ROOT.addId(info.get().parent_id.toString()).add(path.part);
+                        return LOG.exit(db.getDocumentLink(shortPath, DatabaseInterface.GET_LINK)
+                            .orElseThrow(()->new Exceptions.InvalidObjectName(shortPath)));
+                    default:
+                        throw LOG.throwing(new RuntimeException("Don't know how to get " + info.get().type));
+                }
+            } else {
+                if (db.getFolder(path.parent, DatabaseInterface.GET_ID).isPresent())
+                    throw LOG.throwing(new Exceptions.InvalidObjectName(path));
+                else
+                    throw LOG.throwing(new Exceptions.InvalidWorkspace(path));
             }
 
         } catch (SQLException e) {
