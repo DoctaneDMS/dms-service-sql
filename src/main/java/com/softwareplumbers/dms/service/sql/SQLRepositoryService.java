@@ -514,7 +514,7 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public Workspace createWorkspaceByName(RepositoryPath path, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace {
+    public Workspace createWorkspaceByName(RepositoryPath path, Workspace.State state, JsonObject metadata, Options.Create... options) throws Exceptions.InvalidWorkspaceState, Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName {
         LOG.entry(path, state, metadata, Options.loggable(options));
         if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         try (
@@ -523,9 +523,20 @@ public class SQLRepositoryService implements RepositoryService {
             
             Id parent_id = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(path.parent));
             NamedElement part = (NamedElement)path.part;
-            Workspace result = db.createFolder(parent_id, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE);
-            db.commit();
-            return result;
+            try {
+                Workspace result = db.createFolder(parent_id, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE);
+                db.commit();
+                return result;
+            } catch (SQLIntegrityConstraintViolationException e) {
+                LOG.catching(Level.TRACE, e);
+                Info existing = db.getInfo(path, DatabaseInterface.GET_INFO)
+                    .orElseThrow(()->LOG.throwing(e));
+                if (existing.deleted)
+                    return db.updateFolder(existing.id, state, metadata, DatabaseInterface.GET_WORKSPACE)
+                        .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
+                else 
+                    throw LOG.throwing(new Exceptions.InvalidObjectName(path));
+            }
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }    
