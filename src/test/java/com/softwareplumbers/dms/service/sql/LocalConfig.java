@@ -1,5 +1,6 @@
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.sql.AbstractDatabase;
 import com.softwareplumbers.common.sql.OperationStore;
 import com.softwareplumbers.common.sql.Schema;
 import com.softwareplumbers.common.sql.TemplateStore;
@@ -7,10 +8,12 @@ import com.softwareplumbers.dms.common.test.TestModel;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import javax.sql.DataSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportResource;
+import org.springframework.core.env.Environment;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -25,18 +28,22 @@ import org.springframework.context.annotation.ImportResource;
 @ImportResource({"classpath:com/softwareplumbers/dms/service/sql/h2db.xml","classpath:com/softwareplumbers/dms/service/sql/entities.xml"})
 public class LocalConfig {
     
+    @Autowired
+    Environment env;
+    
     @Bean public Filestore filestore() {
-        return new LocalFilesystem(Paths.get("/var/tmp/doctane/filestore"));
+        return new LocalFilesystem(Paths.get(env.getProperty("local.files.dir")));
     }
     
     @Bean public DocumentDatabase database(
         OperationStore<DocumentDatabase.Operation> operations,
         TemplateStore<DocumentDatabase.Template> templates,
         @Qualifier(value="dms.schema") Schema schema
-    ) {
+    ) throws SQLException {
         DocumentDatabase database = new DocumentDatabase(schema);
         database.setOperations(operations);
         database.setTemplates(templates);
+        database.setCreateOption(AbstractDatabase.CreateOption.RECREATE);
         return database;
     }
     
@@ -47,7 +54,7 @@ public class LocalConfig {
     @Bean(name="dms.datasource") public DataSource datasource() {
         DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
         dataSourceBuilder.driverClassName("org.h2.Driver");
-        dataSourceBuilder.url("jdbc:h2:file:/var/tmp/doctane/test");
+        dataSourceBuilder.url(env.getProperty("database.url"));
         dataSourceBuilder.username("sa");
         dataSourceBuilder.password("");
         return dataSourceBuilder.build();        
