@@ -201,8 +201,10 @@
                     FOLDERS ON (NODES.ID = FOLDERS.ID)         
                 ;   
                 
-                CREATE OR REPLACE UNIQUE INDEX NODE_NAME ON NODES (PARENT_ID, NAME, VERSION);
-                CREATE OR REPLACE INDEX VERSION_BY_DOCUMENT ON VERSIONS(DOCUMENT_ID);
+                DROP INDEX IF EXISTS NODE_NAME;
+                CREATE UNIQUE INDEX NODE_NAME ON NODES (PARENT_ID, NAME, VERSION);
+                DROP INDEX IF EXISTS VERSION_BY_DOCUMENT;
+                CREATE INDEX VERSION_BY_DOCUMENT ON VERSIONS(DOCUMENT_ID);
              
             </value>
         </property>
