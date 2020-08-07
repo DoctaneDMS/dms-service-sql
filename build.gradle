@@ -26,7 +26,7 @@ apply plugin: 'io.spring.dependency-management'
 
 test {
     systemProperties = System.properties
-    systemProperty "local.files.dir", propValue("localFilesDir", "/var/tmp/test/files")
+    systemProperty "installation.root", propValue("installFolder", "/var/tmp/test/files")
     systemProperty "database.url", propValue("databaseUrl", "jdbc:h2:file://var/tmp/test/h2")
 
     testLogging {
