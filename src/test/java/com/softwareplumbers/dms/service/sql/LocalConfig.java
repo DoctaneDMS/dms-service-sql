@@ -32,7 +32,7 @@ public class LocalConfig {
     Environment env;
     
     @Bean public Filestore filestore() {
-        return new LocalFilesystem(Paths.get(env.getProperty("local.files.dir")));
+        return new LocalFilesystem(Paths.get(env.getProperty("installation.root")).resolve("documents"));
     }
     
     @Bean public DocumentDatabase database(

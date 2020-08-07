@@ -13,6 +13,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import org.slf4j.ext.XLogger;
 import org.slf4j.ext.XLoggerFactory;
 
@@ -40,6 +41,22 @@ public class LocalFilesystem implements Filestore<Id> {
     
     public LocalFilesystem() {
         this(Paths.get("/var/tmp/doctane/filestore"));
+    }
+    
+    /** Set path from an array of path segments.
+     * 
+     * We use this in spring XML configuration so we can create a path from separate elements
+     * in a platform-independent way.
+     * 
+     * @param basePath 
+     */
+    public void setPath(String[] basePath) {
+        LOG.entry(Arrays.asList(basePath));
+        this.basePath = Paths.get(basePath[0]);
+        for (int i = 1; i < basePath.length; i++) {
+            this.basePath = this.basePath.resolve(basePath[i]);
+        }
+        LOG.exit();
     }
     
     public void setPath(String basePath) {
