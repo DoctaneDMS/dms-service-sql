@@ -16,7 +16,7 @@
        xmlns:aop="http://www.springframework.org/schema/aop">
     
     <bean id="test" class="com.softwareplumbers.dms.service.sql.LocalFilesystem">
-        <property name="Path">
+        <property name="PathParts">
             <array value-type="java.lang.String">
                 <value>#{systemProperties['installation.root']}</value>
                 <value>documents</value>

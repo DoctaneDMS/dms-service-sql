@@ -50,7 +50,7 @@ public class LocalFilesystem implements Filestore<Id> {
      * 
      * @param basePath 
      */
-    public void setPath(String[] basePath) {
+    public void setPathParts(String[] basePath) {
         LOG.entry(Arrays.asList(basePath));
         this.basePath = Paths.get(basePath[0]);
         for (int i = 1; i < basePath.length; i++) {
