@@ -28,7 +28,8 @@ test {
     systemProperties = System.properties
     systemProperty "installation.root", propValue("installFolder", "/var/tmp/test/files")
     systemProperty "database.url", propValue("databaseUrl", "jdbc:h2:file://var/tmp/test/h2")
-
+    systemProperty "database.driver", propValue("databaseDriver", "org.h2.Driver")
+    systemProperty "database.config", propValue("databaseConfig", "classpath:/com/softwareplumbers/dms/service/sql/h2db.xml")
     testLogging {
         events "passed", "skipped", "failed"
     }
@@ -116,4 +117,6 @@ dependencies {
     testCompile group: 'com.softwareplumbers.oss', name: 'dms-interface-core', version: '0.9.11', classifier: 'tests'
     testCompile group: 'com.h2database', name: 'h2', version: '1.4.200'
     testCompile group: 'com.zaxxer', name: 'HikariCP', version: '3.4.2'
+    testCompile group: 'mysql', name: 'mysql-connector-java', version: '8.0.21'
+
 }

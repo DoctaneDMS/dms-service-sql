@@ -25,7 +25,7 @@ import org.springframework.core.env.Environment;
  *
  * @author jonathan
  */
-@ImportResource({"classpath:com/softwareplumbers/dms/service/sql/h2db.xml","classpath:com/softwareplumbers/dms/service/sql/entities.xml"})
+@ImportResource({"classpath:com/softwareplumbers/dms/service/sql/entities.xml", "${database.config}"})
 public class LocalConfig {
     
     @Autowired
