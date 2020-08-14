@@ -16,15 +16,22 @@ import com.softwareplumbers.dms.Workspace;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Optional;
+import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.json.Json;
 import javax.json.JsonValue;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
@@ -42,6 +49,9 @@ public class TestDatabaseInterface {
     @Autowired
     Schema schema;
     
+    @Autowired
+    Environment env;
+    
     @Before
     public void createSchema() throws SQLException {
         schema.dropSchema();        
@@ -58,13 +68,51 @@ public class TestDatabaseInterface {
     public static final RepositoryPath TEST_PATH_V3 = RepositoryPath.valueOf("one/two/three@v1");
     public static final RepositoryPath TEST_PATH_ID0 = RepositoryPath.valueOf("~id/~id2");    
     public static final RepositoryPath TEST_PATH_ID1 = RepositoryPath.valueOf("one/~id1");
-        
+    
+    public enum Dialect {
+        MYSQL,
+        H2
+    }
+    
+    private Dialect dialect() {
+        String dialect = env.getProperty("test.dialect");
+        return (dialect == null) ? Dialect.H2 : Dialect.valueOf(dialect);
+    }
+    
+    private String ternaryIf(String expr, String ifTrue, String ifFalse) {
+        switch (dialect()) {
+            case MYSQL: return String.format("IF(%s, %s, %s)", expr, ifTrue, ifFalse);
+            case H2: return String.format("CASEWHEN(%s, %s, %s)", expr, ifTrue, ifFalse);
+            default: throw new RuntimeException("Unknown dialect");
+        }
+    }
+
+    private String concat(String... elements) {
+        switch (dialect()) {
+            case MYSQL: return String.format("CONCAT(%s)", Stream.of(elements).collect(Collectors.joining(", ")));
+            case H2: return Stream.of(elements).collect(Collectors.joining(" || "));
+            default: throw new RuntimeException("Unknown dialect");
+        }
+    }
+    
     @Test 
     public void testGetDocumentLinkSQL() throws SQLException {
         try (DatabaseInterface api = factory.getInterface()) {
             ParameterizedSQL l0 = api.getDocumentLinkSQL(TEST_PATH_1);
             System.out.println(l0.sql);
-            assertTrue(l0.sql.contains("? || '/' || T0.NAME || CASEWHEN(T0.VERSION='', CASEWHEN(T0.CURRENT, '', '@~' || T0.VERSION_ID), '@' || T0.VERSION) AS PATH"));
+            
+            assertThat(l0.sql, containsString(
+                concat("?", "'/'", "T0.NAME", 
+                    ternaryIf("T0.VERSION=''", 
+                        ternaryIf("T0.CURRENT", 
+                            "''", 
+                            concat("'@~'", "T0.VERSION_ID")
+                        ), 
+                        concat("'@'", "T0.VERSION")
+                    )
+                )
+            ));
+            
             assertTrue(l0.sql.contains("VIEW_LINKS T0"));
             assertTrue(l0.sql.contains("WHERE T0.CURRENT=true AND T0.NAME=? AND T0.PARENT_ID=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
@@ -73,7 +121,28 @@ public class TestDatabaseInterface {
             assertEquals("path.version", l0.parameters[3]);
             ParameterizedSQL l1 = api.getDocumentLinkSQL(TEST_PATH_2);
             System.out.println(l1.sql);
-            assertTrue(l1.sql.contains("? || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', CASEWHEN(T0.CURRENT, '', '@~' || T0.VERSION_ID), '@' || T0.VERSION) AS PATH"));
+            
+            assertThat(l1.sql, containsString(
+                concat(
+                    concat("?", "'/'", "T1.NAME", 
+                        ternaryIf("T1.VERSION=''", 
+                            "''", 
+                            concat("'@'", "T1.VERSION")
+                        )
+                    ), 
+                    "'/'", 
+                    "T0.NAME", 
+                    ternaryIf("T0.VERSION=''", 
+                        ternaryIf("T0.CURRENT", 
+                            "''", 
+                            concat("'@~'", "T0.VERSION_ID")
+                        ), 
+                        concat("'@'", "T0.VERSION")
+                    )
+                )
+            ));
+            
+                
             assertTrue(l1.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
             assertTrue(l1.sql.contains("WHERE T0.CURRENT=true AND T0.NAME=? AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
@@ -84,7 +153,34 @@ public class TestDatabaseInterface {
             assertEquals("path.version", l1.parameters[5]);
             ParameterizedSQL l2 = api.getDocumentLinkSQL(TEST_PATH_3);
             System.out.println(l2.sql);
-            assertTrue(l2.sql.contains("? || '/' || T2.NAME || CASEWHEN(T2.VERSION='', '', '@' || T2.VERSION) || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', CASEWHEN(T0.CURRENT, '', '@~' || T0.VERSION_ID), '@' || T0.VERSION) AS PATH"));
+            
+            assertThat(l2.sql, containsString(
+                concat(
+                    concat(
+                        concat("?", "'/'", "T2.NAME", 
+                            ternaryIf("T2.VERSION=''", 
+                                "''", 
+                                concat("'@'", "T2.VERSION")
+                            )
+                        ), 
+                        "'/'", 
+                        "T1.NAME", 
+                        ternaryIf("T1.VERSION=''", 
+                            "''", 
+                            concat("'@'", "T1.VERSION")
+                        )
+                    ), 
+                    "'/'", 
+                    "T0.NAME", 
+                    ternaryIf("T0.VERSION=''", 
+                        ternaryIf("T0.CURRENT", 
+                            "''", 
+                            concat("'@~'", "T0.VERSION_ID")
+                        ), 
+                        concat("'@'", "T0.VERSION")
+                    )
+                )
+            ));
             assertTrue(l2.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID INNER JOIN VIEW_FOLDERS T2 ON T1.PARENT_ID = T2.ID"));
             assertTrue(l2.sql.contains("WHERE T0.CURRENT=true AND T0.NAME=? AND T1.NAME=? AND T2.NAME=? AND T2.PARENT_ID=? AND T2.VERSION=? AND T1.VERSION=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
@@ -103,7 +199,9 @@ public class TestDatabaseInterface {
         try (DatabaseInterface api = factory.getInterface()) {
             ParameterizedSQL l0 = api.getDocumentLinkSQL(TEST_PATH_ID0);
             System.out.println(l0.sql);
-            assertTrue(l0.sql.contains("? || '/' || T0.NAME || CASEWHEN(T0.VERSION='', CASEWHEN(T0.CURRENT, '', '@~' || T0.VERSION_ID), '@' || T0.VERSION) AS PATH"));
+            assertThat(l0.sql, containsString(
+                concat("?", "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", ternaryIf("T0.CURRENT", "''", concat("'@~'", "T0.VERSION_ID")), concat("'@'", "T0.VERSION")))
+            ));
             assertTrue(l0.sql.contains("VIEW_LINKS T0"));
             assertTrue(l0.sql.contains("WHERE T0.CURRENT=true AND T0.PARENT_ID=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
@@ -112,7 +210,9 @@ public class TestDatabaseInterface {
             assertEquals("path.version", l0.parameters[3]);
             ParameterizedSQL l1 = api.getDocumentLinkSQL(TEST_PATH_ID1);
             System.out.println(l1.sql);
-            assertTrue(l1.sql.contains("? || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', CASEWHEN(T0.CURRENT, '', '@~' || T0.VERSION_ID), '@' || T0.VERSION) AS PATH"));
+            assertThat(l1.sql, containsString(
+                concat(concat("?", "'/'", "T1.NAME", ternaryIf("T1.VERSION=''", "''", concat("'@'", "T1.VERSION"))), "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", ternaryIf("T0.CURRENT", "''", concat("'@~'", "T0.VERSION_ID")), concat("'@'", "T0.VERSION")))
+            ));
             assertTrue(l1.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
             assertTrue(l1.sql.contains("WHERE T0.CURRENT=true AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
             assertEquals("basePath", l1.parameters[0]);
@@ -129,7 +229,9 @@ public class TestDatabaseInterface {
         try (DatabaseInterface api = factory.getInterface()) {
             ParameterizedSQL l0 = api.getFolderSQL(TEST_PATH_1);
             System.out.println(l0.sql);
-            assertTrue(l0.sql.contains("? || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
+            assertThat(l0.sql, containsString(
+                concat("?", "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", "''", concat("'@'", "T0.VERSION")))
+            ));
             assertTrue(l0.sql.contains("VIEW_FOLDERS T0"));
             assertTrue(l0.sql.contains("WHERE T0.NAME=? AND T0.PARENT_ID=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
@@ -138,7 +240,9 @@ public class TestDatabaseInterface {
             assertEquals("path.version", l0.parameters[3]);
             ParameterizedSQL l1 = api.getFolderSQL(TEST_PATH_2);
             System.out.println(l1.sql);
-            assertTrue(l1.sql.contains("? || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
+            assertThat(l1.sql, containsString(
+                concat(concat("?", "'/'", "T1.NAME", ternaryIf("T1.VERSION=''", "''", concat("'@'", "T1.VERSION"))), "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", "''", concat("'@'", "T0.VERSION")))
+            ));
             assertTrue(l1.sql.contains("VIEW_FOLDERS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
             assertTrue(l1.sql.contains("WHERE T0.NAME=? AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
@@ -149,7 +253,9 @@ public class TestDatabaseInterface {
             assertEquals("path.version", l1.parameters[5]);
             ParameterizedSQL l2 = api.getFolderSQL(TEST_PATH_V3);
             System.out.println(l2.sql);
-            assertTrue(l2.sql.contains("? || '/' || T2.NAME || CASEWHEN(T2.VERSION='', '', '@' || T2.VERSION) || '/' || T1.NAME || CASEWHEN(T1.VERSION='', '', '@' || T1.VERSION) || '/' || T0.NAME || CASEWHEN(T0.VERSION='', '', '@' || T0.VERSION) AS PATH"));
+            assertThat(l2.sql, containsString(
+                concat(concat(concat("?", "'/'", "T2.NAME", ternaryIf("T2.VERSION=''", "''", concat("'@'", "T2.VERSION"))), "'/'", "T1.NAME", ternaryIf("T1.VERSION=''", "''", concat("'@'", "T1.VERSION"))), "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", "''", concat("'@'", "T0.VERSION")))            
+            ));
             assertTrue(l2.sql.contains("VIEW_FOLDERS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID INNER JOIN VIEW_FOLDERS T2 ON T1.PARENT_ID = T2.ID"));
             assertTrue(l2.sql.contains("WHERE T0.NAME=? AND T1.NAME=? AND T2.NAME=? AND T2.PARENT_ID=? AND T2.VERSION=? AND T1.VERSION=? AND T0.VERSION=?"));
             assertEquals("basePath", l0.parameters[0]);
@@ -181,19 +287,26 @@ public class TestDatabaseInterface {
         }
     }
 
+    private static final byte[] generateDigest() {
+        byte[] digest = new byte[32];
+        new Random().nextBytes(digest);        
+        return digest;
+    }
+    
     @Test
     public void testCreateAndGetDocument() throws SQLException, IOException {
         try (DatabaseInterface api = factory.getInterface()) {
             Id id = new Id();
             Id version = new Id();
-            api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
+            byte[] digest = generateDigest();
+            api.createDocument(id, version, "type", 0, digest, JsonValue.EMPTY_JSON_OBJECT);
             api.commit();
             Optional<Document> result = api.getDocument(id, version, DatabaseInterface.GET_DOCUMENT);
             assertTrue(result.isPresent());
             assertEquals(id.toString(), result.get().getReference().id);
             assertEquals(version.toString(), result.get().getReference().version);
             assertEquals(0, result.get().getLength());
-            assertArrayEquals("test".getBytes(), result.get().getDigest());
+            assertArrayEquals(digest, result.get().getDigest());
             assertEquals(JsonValue.EMPTY_JSON_OBJECT, result.get().getMetadata());
         }
     }
@@ -281,7 +394,8 @@ public class TestDatabaseInterface {
             Id folder_id = api.createFolder(Id.ROOT_ID, "foldername", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             Id id = new Id();
             Id version = new Id();
-            api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
+            byte[] digest = generateDigest();
+            api.createDocument(id, version, "type", 0, digest, JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(folder_id, "docname", id, version, DatabaseInterface.GET_ID);
             api.commit();
             Optional<DocumentLink> result = api.getDocumentLink(RepositoryPath.ROOT.addId(folder_id.toString()).add("docname"), DatabaseInterface.GET_LINK);
@@ -291,7 +405,7 @@ public class TestDatabaseInterface {
             assertEquals(version.toString(), result.get().getReference().version);
             assertEquals("type", result.get().getMediaType());
             assertEquals(0, result.get().getLength());
-            assertArrayEquals("test".getBytes(), result.get().getDigest());
+            assertArrayEquals(digest, result.get().getDigest());
             assertEquals(JsonValue.EMPTY_JSON_OBJECT, result.get().getMetadata());
         }
     }
@@ -302,7 +416,8 @@ public class TestDatabaseInterface {
             Id folder_id = api.createFolder(Id.ROOT_ID, "foldername", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             Id id = new Id();
             Id version = new Id();
-            api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
+            byte[] digest = generateDigest();
+            api.createDocument(id, version, "type", 0, digest, JsonValue.EMPTY_JSON_OBJECT);
             api.createDocumentLink(folder_id, "docname", id, version, DatabaseInterface.GET_ID);
             api.commit();
             Optional<DocumentLink> result = api.getDocumentLink(RepositoryPath.ROOT.add("foldername","docname"), DatabaseInterface.GET_LINK);
@@ -312,7 +427,7 @@ public class TestDatabaseInterface {
             assertEquals(version.toString(), result.get().getReference().version);
             assertEquals("type", result.get().getMediaType());
             assertEquals(0, result.get().getLength());
-            assertArrayEquals("test".getBytes(), result.get().getDigest());
+            assertArrayEquals(digest, result.get().getDigest());
             assertEquals(JsonValue.EMPTY_JSON_OBJECT, result.get().getMetadata());
         }
     }    

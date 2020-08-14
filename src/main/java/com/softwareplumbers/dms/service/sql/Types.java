@@ -39,9 +39,9 @@ public class Types {
             case ID:
                 RepositoryPath.IdElement docIdPart = (RepositoryPath.IdElement)path.part;
                 if (path.parent.isEmpty())
-                    return fluentStatement.set(name, docIdPart.id); 
+                    return fluentStatement.set(ID, name, Id.of(docIdPart.id)); 
                 else
-                    return fluentStatement.set(PATH, "parent." + name, path.parent).set(name, docIdPart.id).set(VERSION, name + ".version", version);
+                    return fluentStatement.set(PATH, "parent." + name, path.parent).set(ID, name, Id.of(docIdPart.id)).set(VERSION, name + ".version", version);
             default:
                 return fluentStatement.set(PATH, "parent." + name, path.parent);
         }

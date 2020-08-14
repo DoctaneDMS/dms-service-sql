@@ -53,10 +53,10 @@ public class LocalConfig {
      
     @Bean(name="dms.datasource") public DataSource datasource() {
         DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
-        dataSourceBuilder.driverClassName("org.h2.Driver");
+        dataSourceBuilder.driverClassName(env.getProperty("database.driver"));
         dataSourceBuilder.url(env.getProperty("database.url"));
-        dataSourceBuilder.username("sa");
-        dataSourceBuilder.password("");
+        dataSourceBuilder.username(env.getProperty("database.user"));
+        dataSourceBuilder.password(env.getProperty("database.password"));
         return dataSourceBuilder.build();        
     }
     

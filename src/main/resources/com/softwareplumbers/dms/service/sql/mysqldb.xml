@@ -35,45 +35,48 @@
         <property name="sql" >
             <value>
                 CREATE TABLE NODES (
-                    ID UUID PRIMARY KEY,
-                    PARENT_ID UUID,
+                    ID BINARY(16) PRIMARY KEY,
+                    PARENT_ID BINARY(16),
                     NAME VARCHAR(255),
                     VERSION VARCHAR(255) DEFAULT '',
                     TYPE VARCHAR(16),
                     DELETED BOOLEAN DEFAULT FALSE
                 );
                 
-                INSERT INTO NODES (ID, TYPE) VALUES ('00000000-0000-0000-0000-000000000000', 'WORKSPACE');
+                INSERT INTO NODES (ID, TYPE) VALUES (UNHEX('00000000000000000000000000000000'), 'WORKSPACE');
 
                 CREATE TABLE LINKS (
-                    ID UUID PRIMARY KEY,
-                    DOCUMENT_ID UUID,
-                    VERSION_ID UUID,
+                    ID BINARY(16) PRIMARY KEY,
+                    DOCUMENT_ID BINARY(16),
+                    VERSION_ID BINARY(16),
                     VERSIONED BOOLEAN
                 );
                 
                 CREATE TABLE DOCUMENTS(
-                    ID UUID PRIMARY KEY,
-                    LATEST_VERSION UUID
+                    ID BINARY(16) PRIMARY KEY,
+                    LATEST_VERSION BINARY(16)
                 );
 
                 CREATE TABLE VERSIONS (
-                    DOCUMENT_ID UUID,
-                    ID UUID PRIMARY KEY,
+                    DOCUMENT_ID BINARY(16),
+                    ID BINARY(16) PRIMARY KEY,
                     MEDIA_TYPE VARCHAR(255),
                     LENGTH BIGINT,
                     DIGEST BINARY(32),
                     CREATED TIMESTAMP,
-                    METADATA CLOB
+                    METADATA TEXT
                 );
 
                 CREATE TABLE FOLDERS (
-                    ID UUID PRIMARY KEY,
+                    ID BINARY(16) PRIMARY KEY,
                     STATE VARCHAR(16),
-                    METADATA CLOB
+                    METADATA TEXT
                 );
 
-                INSERT INTO FOLDERS (ID, STATE, METADATA) VALUES ('00000000-0000-0000-0000-000000000000', 'Open', '{}');
+                INSERT INTO FOLDERS (ID, STATE, METADATA) VALUES (UNHEX('00000000000000000000000000000000'), 'Open', '{}');
+                
+                CREATE UNIQUE INDEX NODE_NAME ON NODES (PARENT_ID, NAME, VERSION);
+                CREATE INDEX VERSION_BY_DOCUMENT ON VERSIONS(DOCUMENT_ID);                
 
             </value>
         </property>
@@ -91,7 +94,7 @@
                     VERSIONS.DIGEST AS DIGEST,
                     VERSIONS.CREATED AS CREATED,
                     VERSIONS.METADATA AS METADATA,                    
-                    NVL2(DOCUMENTS.ID,TRUE,FALSE) AS LATEST
+                    CASE WHEN DOCUMENTS.ID IS NULL THEN FALSE ELSE TRUE END AS LATEST
                 FROM
                     VERSIONS
                 LEFT JOIN
@@ -200,12 +203,7 @@
                 INNER JOIN
                     FOLDERS ON (NODES.ID = FOLDERS.ID)         
                 ;   
-                
-                DROP INDEX IF EXISTS NODE_NAME;
-                CREATE UNIQUE INDEX NODE_NAME ON NODES (PARENT_ID, NAME, VERSION);
-                DROP INDEX IF EXISTS VERSION_BY_DOCUMENT;
-                CREATE INDEX VERSION_BY_DOCUMENT ON VERSIONS(DOCUMENT_ID);
-             
+                             
             </value>
         </property>
     </bean>
@@ -215,13 +213,13 @@
             <map key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Operation">
                 <entry key="fetchPathToId">
                     <value>
-                        WITH LINK(ID,NAME) AS (
-                            SELECT ID,NODES.NAME || CASEWHEN(NODES.VERSION='', '', '@' || NODES.VERSION)
+                        WITH RECURSIVE LINK(ID,NAME) AS (
+                            SELECT ID, CONCAT(NODES.NAME, IF(NODES.VERSION='', '', CONCAT('@',NODES.VERSION)))
                             FROM NODES 
-                            WHERE PARENT_ID = '00000000-0000-0000-0000-000000000000' 
+                            WHERE PARENT_ID = X'00000000000000000000000000000000' 
                             UNION ALL SELECT 
                                 NODES.ID, 
-                                IFNULL(LINK.NAME || '/', '') || NODES.NAME || CASEWHEN(NODES.VERSION='', '', '@' || NODES.VERSION)
+                                CONCAT(IF(LINK.NAME IS NULL, '', CONCAT(LINK.NAME, '/')), NODES.NAME, IF(NODES.VERSION='', '', CONCAT('@', NODES.VERSION)))
                             FROM LINK 
                             INNER JOIN NODES ON LINK.ID = NODES.PARENT_ID
                         ) 
@@ -475,10 +473,10 @@
                     </value>
                 </entry>
                 <entry key="nameExpr">
-                    <value>!{1} || '/' || T!{0}.NAME || CASEWHEN(T!{0}.VERSION='', '', '@' || T!{0}.VERSION)</value>
+                    <value>CONCAT(!{1}, '/', T!{0}.NAME, IF(T!{0}.VERSION='', '', CONCAT('@', T!{0}.VERSION)))</value>
                 </entry>
                 <entry key="documentNameExpr">
-                    <value>!{1} || '/' || T!{0}.NAME || CASEWHEN(T!{0}.VERSION='', CASEWHEN(T!{0}.CURRENT, '', '@~' || T!{0}.VERSION_ID), '@' || T!{0}.VERSION)</value>
+                    <value>CONCAT(!{1}, '/', T!{0}.NAME, IF(T!{0}.VERSION='', IF(T!{0}.CURRENT, '', CONCAT('@~', T!{0}.VERSION_ID)), CONCAT('@', T!{0}.VERSION)))</value>
                 </entry>
             </map>
         </constructor-arg>

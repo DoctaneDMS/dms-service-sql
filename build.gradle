@@ -30,6 +30,9 @@ test {
     systemProperty "database.url", propValue("databaseUrl", "jdbc:h2:file://var/tmp/test/h2")
     systemProperty "database.driver", propValue("databaseDriver", "org.h2.Driver")
     systemProperty "database.config", propValue("databaseConfig", "classpath:/com/softwareplumbers/dms/service/sql/h2db.xml")
+    systemProperty "database.user", propValue("databaseUser", "sa")
+    systemProperty "database.password", propValue("databasePassword", "")
+    systemProperty "test.dialect", propValue("testDialect", "H2")
     testLogging {
         events "passed", "skipped", "failed"
     }

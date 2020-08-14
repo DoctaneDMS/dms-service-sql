@@ -115,7 +115,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
     public static DocumentLink getLink(ResultSet results, RepositoryPath basePath) throws SQLException {
         String mediaType = results.getString("MEDIA_TYPE");
         Id docId = new Id(results.getBytes("DOCUMENT_ID"));
-        String docVersion = results.getString("VERSION_ID");
+        Id docVersion = new Id(results.getBytes("VERSION_ID"));
         long length = results.getLong("LENGTH");
         byte[] hash = results.getBytes("DIGEST");
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
@@ -127,7 +127,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         Optional<RepositoryPath.IdElement> rootId = basePath.getRootId();
                 
         RepositoryPath name = basePath.addAll(RepositoryPath.valueOf(results.getString("PATH")));
-        return new DocumentLinkImpl(id.toString(), version, name, deleted, new Reference(docId.toString(),docVersion), updateTime, mediaType, length, hash, metadata, false, LocalData.NONE);
+        return new DocumentLinkImpl(id.toString(), version, name, deleted, new Reference(docId.toString(),docVersion.toString()), updateTime, mediaType, length, hash, metadata, false, LocalData.NONE);
     }
     
     public static Mapper<DocumentLink> GET_LINK = rs -> getLink(rs, RepositoryPath.ROOT);
@@ -313,42 +313,38 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
     
     
     String getNameExpression(RepositoryPath basePath, RepositoryPath path) {
-        StringBuilder builder = new StringBuilder();
         int depth = path.afterRootId().size();
-        builder.append("'").append(basePath.toString()).append("'");      
+        String result = "'" + basePath.toString() + "'";      
         for (int i = depth - 1; i >= 0 ; i--)
-            builder.append(templates.getSQL(Template.nameExpr, Integer.toString(i)));
-        return builder.toString();
+            result = templates.getSQL(Template.nameExpr, Integer.toString(i), result);
+        return result;
     }
     
     ParameterizedSQL getParametrizedNameExpression(RepositoryPath path) {
-        StringBuilder builder = new StringBuilder();
         int depth = path.afterRootId().size();
-        builder.append("?");      
+        String result = "?";     
         for (int i = depth - 1; i >= 0 ; i--)
-            builder.append(templates.getSQL(Template.nameExpr, Integer.toString(i)));
-        return new ParameterizedSQL(builder.toString(), "basePath");
+            result = templates.getSQL(Template.nameExpr, Integer.toString(i), result);
+        return new ParameterizedSQL(result, "basePath");
     }
     
     
     String getDocumentNameExpression(RepositoryPath basePath, RepositoryPath path) {
-        StringBuilder builder = new StringBuilder();
         int depth = path.afterRootId().size();
-        builder.append("'").append(basePath.toString()).append("'");      
+        String result = "'" + basePath.toString() + "'";
         for (int i = depth - 1; i > 0 ; i--)
-            builder.append(templates.getSQL(Template.nameExpr, Integer.toString(i)));
-        if (depth > 0) builder.append(templates.getSQL(Template.documentNameExpr, "0"));
-        return builder.toString();
+            result = templates.getSQL(Template.nameExpr, Integer.toString(i), result);
+        if (depth > 0) result = templates.getSQL(Template.documentNameExpr, "0", result);
+        return result;
     }
     
     ParameterizedSQL getParametrizedDocumentNameExpression(RepositoryPath path) {
-        StringBuilder builder = new StringBuilder();
         int depth = path.afterRootId().size();
-        builder.append("?");      
+        String result = "?";
         for (int i = depth - 1; i > 0 ; i--)
-            builder.append(templates.getSQL(Template.nameExpr, Integer.toString(i)));
-        if (depth > 0) builder.append(templates.getSQL(Template.documentNameExpr, "0"));
-        return new ParameterizedSQL(builder.toString(), "basePath");
+            result = templates.getSQL(Template.nameExpr, Integer.toString(i), result);
+        if (depth > 0) result = templates.getSQL(Template.documentNameExpr, "0", result);
+        return new ParameterizedSQL(result, "basePath");
     }    
     
     Query getDBFilterExpression(Iterable<QualifiedName> validFields, Query filter) {
@@ -572,7 +568,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
             .execute(con);
         
         RepositoryPath path = RepositoryPath.ROOT.addId(parentId.toString()).add(name);
-        
+        con.commit(); // REMOVEME
         ParameterizedSQL sql = this.getFolderSQL(path);
         try (Stream<T> result = FluentStatement.of(sql.sql, sql.parameters)
             .set("basePath", getBasePath(path, mapper).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path))).toString())    
