@@ -95,6 +95,14 @@ public class TestDatabaseInterface {
         }
     }
     
+    private String toUuid(String expr) {
+        switch (dialect()) {
+            case MYSQL: return String.format("BIN_TO_UUID(%s)", expr);
+            case H2: return expr;
+            default: throw new RuntimeException("Unknown dialect");
+        }        
+    }
+    
     @Test 
     public void testGetDocumentLinkSQL() throws SQLException {
         try (DatabaseInterface api = factory.getInterface()) {
@@ -106,7 +114,7 @@ public class TestDatabaseInterface {
                     ternaryIf("T0.VERSION=''", 
                         ternaryIf("T0.CURRENT", 
                             "''", 
-                            concat("'@~'", "T0.VERSION_ID")
+                            concat("'@~'", toUuid("T0.VERSION_ID"))
                         ), 
                         concat("'@'", "T0.VERSION")
                     )
@@ -135,7 +143,7 @@ public class TestDatabaseInterface {
                     ternaryIf("T0.VERSION=''", 
                         ternaryIf("T0.CURRENT", 
                             "''", 
-                            concat("'@~'", "T0.VERSION_ID")
+                            concat("'@~'", toUuid("T0.VERSION_ID"))
                         ), 
                         concat("'@'", "T0.VERSION")
                     )
@@ -175,7 +183,7 @@ public class TestDatabaseInterface {
                     ternaryIf("T0.VERSION=''", 
                         ternaryIf("T0.CURRENT", 
                             "''", 
-                            concat("'@~'", "T0.VERSION_ID")
+                            concat("'@~'", toUuid("T0.VERSION_ID"))
                         ), 
                         concat("'@'", "T0.VERSION")
                     )
@@ -200,7 +208,7 @@ public class TestDatabaseInterface {
             ParameterizedSQL l0 = api.getDocumentLinkSQL(TEST_PATH_ID0);
             System.out.println(l0.sql);
             assertThat(l0.sql, containsString(
-                concat("?", "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", ternaryIf("T0.CURRENT", "''", concat("'@~'", "T0.VERSION_ID")), concat("'@'", "T0.VERSION")))
+                concat("?", "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", ternaryIf("T0.CURRENT", "''", concat("'@~'", toUuid("T0.VERSION_ID"))), concat("'@'", "T0.VERSION")))
             ));
             assertTrue(l0.sql.contains("VIEW_LINKS T0"));
             assertTrue(l0.sql.contains("WHERE T0.CURRENT=true AND T0.PARENT_ID=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
@@ -211,7 +219,7 @@ public class TestDatabaseInterface {
             ParameterizedSQL l1 = api.getDocumentLinkSQL(TEST_PATH_ID1);
             System.out.println(l1.sql);
             assertThat(l1.sql, containsString(
-                concat(concat("?", "'/'", "T1.NAME", ternaryIf("T1.VERSION=''", "''", concat("'@'", "T1.VERSION"))), "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", ternaryIf("T0.CURRENT", "''", concat("'@~'", "T0.VERSION_ID")), concat("'@'", "T0.VERSION")))
+                concat(concat("?", "'/'", "T1.NAME", ternaryIf("T1.VERSION=''", "''", concat("'@'", "T1.VERSION"))), "'/'", "T0.NAME", ternaryIf("T0.VERSION=''", ternaryIf("T0.CURRENT", "''", concat("'@~'", toUuid("T0.VERSION_ID"))), concat("'@'", "T0.VERSION")))
             ));
             assertTrue(l1.sql.contains("VIEW_LINKS T0 INNER JOIN VIEW_FOLDERS T1 ON T0.PARENT_ID = T1.ID"));
             assertTrue(l1.sql.contains("WHERE T0.CURRENT=true AND T1.NAME=? AND T1.PARENT_ID=? AND T1.VERSION=? AND T0.DOCUMENT_ID=? AND T0.VERSION=?"));
