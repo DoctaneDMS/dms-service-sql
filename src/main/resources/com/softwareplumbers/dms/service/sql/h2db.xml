@@ -492,7 +492,9 @@
         <property name="createScript" ref="dms.createScript"/>
         <property name="updateScript" ref="dms.updateScript"/>
         <property name="dropScript" ref="dms.dropScript"/>
-        <property name="entityMap" ref="dms.entityMap"/>
+        <property name="supportedEntities" value="com.softwareplumbers.dms.service.sql.DocumentDatabase.EntityType"/>
+        <property name="supportedTypes" value="com.softwareplumbers.dms.service.sql.DocumentDatabase.DataType"/>        
+        <property name="entityMap" ref="dms.entityMap"/>        
     </bean>
     
 </beans>
