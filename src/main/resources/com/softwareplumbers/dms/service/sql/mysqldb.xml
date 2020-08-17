@@ -476,18 +476,27 @@
                     <value>CONCAT(!{1}, '/', T!{0}.NAME, IF(T!{0}.VERSION='', '', CONCAT('@', T!{0}.VERSION)))</value>
                 </entry>
                 <entry key="documentNameExpr">
-                    <value>CONCAT(!{1}, '/', T!{0}.NAME, IF(T!{0}.VERSION='', IF(T!{0}.CURRENT, '', CONCAT('@~', T!{0}.VERSION_ID)), CONCAT('@', T!{0}.VERSION)))</value>
+                    <value>CONCAT(!{1}, '/', T!{0}.NAME, IF(T!{0}.VERSION='', IF(T!{0}.CURRENT, '', CONCAT('@~', BIN_TO_UUID(T!{0}.VERSION_ID))), CONCAT('@', T!{0}.VERSION)))</value>
+                </entry>
+                <entry key="uuidExpr">
+                    <value>UUID_TO_BIN('!{0}')</value>
                 </entry>
             </map>
         </constructor-arg>
     </bean>
 
+    
+
     <bean id="dms.schema" class="com.softwareplumbers.common.sql.Schema"> 
         <constructor-arg ref="dms.datasource"/>
+        <property name="valueFormatter"><bean class="com.softwareplumbers.dms.service.sql.DocumentDatabase.MySQLValueFormatter"/></property>
+        <property name="supportedEntities" value="com.softwareplumbers.dms.service.sql.DocumentDatabase.EntityType"/>
+        <property name="supportedTypes" value="com.softwareplumbers.dms.service.sql.DocumentDatabase.DataType"/>
         <property name="createScript" ref="dms.createScript"/>
         <property name="updateScript" ref="dms.updateScript"/>
         <property name="dropScript" ref="dms.dropScript"/>
         <property name="entityMap" ref="dms.entityMap"/>
     </bean>
+    
     
 </beans>

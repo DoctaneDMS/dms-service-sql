@@ -480,6 +480,9 @@
                 <entry key="documentNameExpr">
                     <value>!{1} || '/' || T!{0}.NAME || CASEWHEN(T!{0}.VERSION='', CASEWHEN(T!{0}.CURRENT, '', '@~' || T!{0}.VERSION_ID), '@' || T!{0}.VERSION)</value>
                 </entry>
+                <entry key="uuidExpr">
+                    <value>'!{0}'</value>
+                </entry>                
             </map>
         </constructor-arg>
     </bean>

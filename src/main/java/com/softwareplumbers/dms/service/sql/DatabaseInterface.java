@@ -30,7 +30,7 @@ import com.softwareplumbers.dms.common.impl.LocalData;
 import com.softwareplumbers.dms.common.impl.WorkspaceImpl;
 import com.softwareplumbers.dms.service.sql.DocumentDatabase.Operation;
 import com.softwareplumbers.dms.service.sql.DocumentDatabase.Template;
-import com.softwareplumbers.dms.service.sql.DocumentDatabase.Type;
+import com.softwareplumbers.dms.service.sql.DocumentDatabase.EntityType;
 import com.softwareplumbers.common.abstractquery.visitor.Visitors.ParameterizedSQL;
 import com.softwareplumbers.dms.RepositoryPath.Version;
 import java.io.Reader;
@@ -54,10 +54,10 @@ import javax.json.JsonWriter;
  *
  * @author jonathan
  */
-public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, DocumentDatabase.Operation, DocumentDatabase.Template> {
+public class DatabaseInterface extends AbstractInterface<DocumentDatabase.EntityType, DocumentDatabase.DataType, DocumentDatabase.Operation, DocumentDatabase.Template> {
     
-    public DatabaseInterface(Schema<DocumentDatabase.Type> schema, OperationStore<DocumentDatabase.Operation> operations, TemplateStore<DocumentDatabase.Template> templates) throws SQLException {
-        super(schema, operations, templates);
+    public DatabaseInterface(DocumentDatabase db) throws SQLException {
+        super(db);
     }
     
     private static final String SAFE_CHARACTERS ="0123456789ABCDEFGHIJKLMNOPQURSTUVWYXabcdefghijklmnopqrstuvwxyz";
@@ -355,8 +355,8 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         int depth = path.getDocumentPath().size();
         ParameterizedSQL criteria = path.size() > 1 && path.part.getId().isPresent()
             || !path.isEmpty() && path.part.getVersion().getId().isPresent()
-            ? getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.LINK))
-            : getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.NODE));
+            ? getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(EntityType.LINK))
+            : getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(EntityType.NODE));
         return templates.getParameterizedSQL(Template.fetchInfo, criteria);
     }
     
@@ -367,26 +367,26 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
         //int depth = path.getDocumentPath().size();
         // This test is only needed 
         //Type typeRequested = path.part.getVersion() != Version.NONE ? Type.DOCUMENT_LINK : Type.VERSION_LINK;
-        ParameterizedSQL criteria = query.toExpression(schema.getFormatter(Type.LINK));
+        ParameterizedSQL criteria = query.toExpression(schema.getFormatter(EntityType.LINK));
         ParameterizedSQL name =  getParametrizedDocumentNameExpression(path);
         return templates.getParameterizedSQL(Template.fetchDocumentLink, name, criteria);
     }
     
     String getDocumentSearchSQL(Query query, boolean searchHistory) {
-        query = getDBFilterExpression(schema.getFields(Type.VERSION), query);
+        query = getDBFilterExpression(schema.getFields(EntityType.VERSION), query);
         if (!searchHistory)
             query = query.intersect(Query.from("latest", Range.equals(JsonValue.TRUE)));
-        return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(Type.VERSION)).sql);
+        return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(EntityType.VERSION)).sql);
     }
     
     String getDocumentSearchHistorySQL(Query query) {
-        query = getDBFilterExpression(schema.getFields(Type.VERSION), query);
+        query = getDBFilterExpression(schema.getFields(EntityType.VERSION), query);
         query = query.intersect(Query.from(QualifiedName.of("reference","id"), Range.equals(Param.from("0"))));
-        return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(Type.VERSION)).sql);
+        return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(EntityType.VERSION)).sql);
     }
         
     String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean includeDeleted) {
-        filter = getDBFilterExpression(schema.getFields(Type.LINK), filter);
+        filter = getDBFilterExpression(schema.getFields(EntityType.LINK), filter);
         // unless there is a wildcard in the version string for the final part of the address,
         // the intention of the user is probably to retrieve the current version of the document
         if (nameWithPatterns.isEmpty() || !nameWithPatterns.part.getVersion().getPattern().isPresent())
@@ -400,18 +400,18 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
             filter = filter            
                 .intersect(getDeletedQuery(nameWithPatterns));
         }
-        return templates.getSQL(Template.fetchDocumentLink, getDocumentNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(Type.LINK)).sql);
+        return templates.getSQL(Template.fetchDocumentLink, getDocumentNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(EntityType.LINK)).sql);
     }
     
     ParameterizedSQL getFolderSQL(RepositoryPath path) {
         int depth = path.getDocumentPath().size();   
-        ParameterizedSQL criteria = getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(Type.FOLDER));
+        ParameterizedSQL criteria = getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(EntityType.FOLDER));
         ParameterizedSQL name = getParametrizedNameExpression(path);
         return templates.getParameterizedSQL(Template.fetchFolder, name, criteria);
     }
 
     String searchFolderSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean includeDeleted) {
-        filter = getDBFilterExpression(schema.getFields(Type.FOLDER), filter);
+        filter = getDBFilterExpression(schema.getFields(EntityType.FOLDER), filter);
         if (!nameWithPatterns.isEmpty()) {
             filter=filter
                 .intersect(getNameQuery(nameWithPatterns))            
@@ -421,7 +421,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
             filter = filter
                 .intersect(getDeletedQuery(nameWithPatterns));
         }
-        return templates.getSQL(Template.fetchFolder, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(Type.FOLDER)).sql);
+        return templates.getSQL(Template.fetchFolder, getNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(EntityType.FOLDER)).sql);
     }
 
     public Optional<RepositoryPath> getPathTo(Id id) throws SQLException {
@@ -568,7 +568,6 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Type, 
             .execute(con);
         
         RepositoryPath path = RepositoryPath.ROOT.addId(parentId.toString()).add(name);
-        con.commit(); // REMOVEME
         ParameterizedSQL sql = this.getFolderSQL(path);
         try (Stream<T> result = FluentStatement.of(sql.sql, sql.parameters)
             .set("basePath", getBasePath(path, mapper).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path))).toString())    

@@ -10,7 +10,6 @@ import com.softwareplumbers.common.sql.CustomType;
 import com.softwareplumbers.common.sql.FluentStatement;
 import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.RepositoryPath.Version;
-import java.sql.PreparedStatement;
 
 /**
  *
@@ -23,8 +22,14 @@ public class Types {
     };
     
     public static final CustomType<Version> VERSION = (statement, index, value) -> {
-        if (value == null) statement.setNull(index,  java.sql.Types.VARCHAR);
-        else statement.setString(index, value.getName().orElse(value.getId().orElse("")));
+        if (value == null) 
+            statement.setNull(index,  java.sql.Types.VARCHAR);
+        else if (value.getName().isPresent()) 
+            statement.setString(index, value.getName().get());
+        else if (value.getId().isPresent()) 
+            statement.setBytes(index, Id.of(value.getId().get()).getBytes());
+        else
+            statement.setString(index, "");
     };
     
     public static final CompositeType<RepositoryPath> PATH = Types::setRepositoryPath;

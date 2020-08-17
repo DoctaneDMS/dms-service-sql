@@ -20,10 +20,10 @@
     <bean id="dms.nodes" class="com.softwareplumbers.common.sql.Schema.Entity">
         <constructor-arg>
             <map>
-                <entry key="id" value="ID"/>
+                <entry key="id" value="ID UUID"/>
                 <entry key="version" value="VERSION"/>
-                <entry key="parentId" value="PARENT_ID"/>
-                <entry key="parent" value="PARENT_ID"/>
+                <entry key="parentId" value="PARENT_ID UUID"/>
+                <entry key="parent" value="PARENT_ID UUID"/>
                 <entry key="name" value="NAME"/>
                 <entry key="deleted" value="DELETED"/>
             </map>
@@ -32,7 +32,7 @@
         <property name="id" value="ID"/>
         <property name="links">
             <map>
-                <entry key="parent" value-ref="dms.nodes"/>
+                <entry key="parent" value="NODE"/>
             </map>
         </property>
     </bean>    
@@ -48,7 +48,7 @@
         <property name="id" value="ID"/>
         <property name="links">
             <map>
-                <entry key="parent" value-ref="dms.folders"/>
+                <entry key="parent" value="FOLDER"/>
             </map>
         </property>
     </bean>
@@ -56,8 +56,8 @@
     <bean id="dms.versions" class="com.softwareplumbers.common.sql.Schema.Entity">
         <constructor-arg>
             <map>
-                <entry key="reference.id" value="DOCUMENT_ID"/>
-                <entry key="reference.version" value="VERSION"/>
+                <entry key="reference.id" value="DOCUMENT_ID UUID"/>
+                <entry key="reference.version" value="VERSION UUID"/>
                 <entry key="mediaType" value="MEDIA_TYPE"/>
                 <entry key="digest" value="DIGEST"/>
                 <entry key="length" value="LENGTH"/>
@@ -72,10 +72,10 @@
         <constructor-arg ref="dms.nodes"/>
         <constructor-arg>
             <map>
-                <entry key="reference.id" value="DOCUMENT_ID"/>
-                <entry key="reference.version" value="VERSION_ID"/>
+                <entry key="reference.id" value="DOCUMENT_ID UUID"/>
+                <entry key="reference.version" value="VERSION_ID UUID"/>
                 <entry key="mediaType" value="MEDIA_TYPE"/>
-                <entry key="digest" value="DIGEST"/>
+                <entry key="digest" value="DIGEST BINARY"/>
                 <entry key="length" value="LENGTH"/>
             </map>
         </constructor-arg>    
@@ -83,7 +83,7 @@
         <property name="id" value="ID"/>
         <property name="links">
             <map>
-                <entry key="parent" value-ref="dms.folders"/>
+                <entry key="parent" value="FOLDER"/>
             </map>
         </property>
     </bean>
@@ -92,10 +92,10 @@
         <constructor-arg ref="dms.nodes"/>
         <constructor-arg>
             <map>
-                <entry key="reference.id" value="DOCUMENT_ID"/>
-                <entry key="reference.version" value="VERSION_ID"/>
+                <entry key="reference.id" value="DOCUMENT_ID UUID"/>
+                <entry key="reference.version" value="VERSION_ID UUID"/>
                 <entry key="mediaType" value="MEDIA_TYPE"/>
-                <entry key="digest" value="DIGEST"/>
+                <entry key="digest" value="DIGEST UUID"/>
                 <entry key="length" value="LENGTH"/>
             </map>
         </constructor-arg>    
@@ -103,7 +103,7 @@
         <property name="id" value="ID"/>
         <property name="links">
             <map>
-                <entry key="parent" value-ref="dms.folders"/>
+                <entry key="parent" value="FOLDER"/>
             </map>
         </property>
     </bean>  
@@ -112,10 +112,10 @@
         <constructor-arg ref="dms.nodes"/>
         <constructor-arg>
             <map>
-                <entry key="reference.id" value="DOCUMENT_ID"/>
-                <entry key="reference.version" value="VERSION_ID"/>
+                <entry key="reference.id" value="DOCUMENT_ID UUID"/>
+                <entry key="reference.version" value="VERSION_ID UUID"/>
                 <entry key="mediaType" value="MEDIA_TYPE"/>
-                <entry key="digest" value="DIGEST"/>
+                <entry key="digest" value="DIGEST UUID"/>
                 <entry key="length" value="LENGTH"/>
                 <entry key="current" value="CURRENT"/>
             </map>
@@ -124,13 +124,13 @@
         <property name="id" value="ID"/>
         <property name="links">
             <map>
-                <entry key="parent" value-ref="dms.folders"/>
+                <entry key="parent" value="FOLDER"/>
             </map>
         </property>
     </bean>  
     
     
-    <util:map id="dms.entityMap" key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Type">
+    <util:map id="dms.entityMap">
         <entry key="NODE" value-ref="dms.nodes"/>
         <entry key="FOLDER" value-ref="dms.folders"/>
         <entry key="VERSION" value-ref="dms.versions"/>

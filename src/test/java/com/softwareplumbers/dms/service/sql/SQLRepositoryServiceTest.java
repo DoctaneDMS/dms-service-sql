@@ -45,7 +45,7 @@ public class SQLRepositoryServiceTest extends BaseRepositoryServiceTest {
 
 	@Override
 	public RepositoryService service() {
-        if (init) { init = false; initSchema(); };
+        //if (init) { init = false; initSchema(); };
 		return service;
 	}
     
