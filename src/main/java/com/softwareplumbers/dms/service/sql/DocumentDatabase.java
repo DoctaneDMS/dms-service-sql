@@ -6,13 +6,12 @@
 package com.softwareplumbers.dms.service.sql;
 
 import com.softwareplumbers.common.sql.AbstractDatabase;
-import com.softwareplumbers.common.sql.OperationStore;
 import com.softwareplumbers.common.sql.Schema;
-import com.softwareplumbers.common.sql.TemplateStore;
 import java.sql.SQLException;
 import java.util.function.BiFunction;
 import javax.json.JsonString;
 import javax.json.JsonValue;
+import javax.sql.DataSource;
 
 /**
  *
@@ -20,12 +19,12 @@ import javax.json.JsonValue;
  */
 public class DocumentDatabase extends AbstractDatabase<DocumentDatabase.EntityType, DocumentDatabase.DataType, DocumentDatabase.Operation, DocumentDatabase.Template, DatabaseInterface> {
 
-    public DocumentDatabase(Schema<EntityType, DataType> schema) {
-        super(schema);
+    public DocumentDatabase(DataSource datasource, Schema<EntityType, DataType> schema) {
+        super(datasource, schema);
     }
 
     @Override
-    public DatabaseInterface createInterface(Schema<EntityType, DataType> schema, OperationStore<Operation> os, TemplateStore<Template> ts) throws SQLException {
+    public DatabaseInterface createInterface() throws SQLException {
         return new DatabaseInterface(this);
     }
     

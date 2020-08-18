@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportResource;
@@ -25,7 +26,7 @@ import org.springframework.core.env.Environment;
  *
  * @author jonathan
  */
-@ImportResource({"classpath:com/softwareplumbers/dms/service/sql/entities.xml", "${database.config}"})
+@ImportResource({"classpath:com/softwareplumbers/dms/service/sql/entities.xml", "classpath:com/softwareplumbers/dms/service/sql/mysqldb.xml", "classpath:com/softwareplumbers/dms/service/sql/h2db.xml"})
 public class LocalConfig {
     
     @Autowired
@@ -35,17 +36,32 @@ public class LocalConfig {
         return new LocalFilesystem(Paths.get(env.getProperty("installation.root")).resolve("documents"));
     }
     
-    @Bean public DocumentDatabase database(
-        OperationStore<DocumentDatabase.Operation> operations,
-        TemplateStore<DocumentDatabase.Template> templates,
-        @Qualifier(value="dms.schema") Schema schema
+    @ConditionalOnProperty(value = "database.variant", havingValue = "h2")
+    @Bean public DocumentDatabase databaseH2(
+        @Qualifier(value="h2.dms.operations") OperationStore<DocumentDatabase.Operation> operations,
+        @Qualifier(value="h2.dms.templates") TemplateStore<DocumentDatabase.Template> templates,
+        @Qualifier(value="h2.dms.schema") Schema schema
     ) throws SQLException {
-        DocumentDatabase database = new DocumentDatabase(schema);
+        DocumentDatabase database = new DocumentDatabase(datasource(), schema);
         database.setOperations(operations);
         database.setTemplates(templates);
         database.setCreateOption(AbstractDatabase.CreateOption.RECREATE);
         return database;
     }
+
+    @ConditionalOnProperty(value = "database.variant", havingValue = "mysql")
+    @Bean public DocumentDatabase databaseMySql(
+        @Qualifier(value="mysql.dms.operations") OperationStore<DocumentDatabase.Operation> operations,
+        @Qualifier(value="mysql.dms.templates") TemplateStore<DocumentDatabase.Template> templates,
+        @Qualifier(value="mysql.dms.schema") Schema schema
+    ) throws SQLException {
+        DocumentDatabase database = new DocumentDatabase(datasource(), schema);
+        database.setOperations(operations);
+        database.setTemplates(templates);
+        database.setCreateOption(AbstractDatabase.CreateOption.RECREATE);
+        return database;
+    }
+
     
     @Bean public SQLRepositoryService service(DocumentDatabase database, Filestore filestore) throws SQLException {
         return new SQLRepositoryService(database, filestore);

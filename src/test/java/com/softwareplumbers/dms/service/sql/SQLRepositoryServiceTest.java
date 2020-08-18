@@ -26,26 +26,10 @@ public class SQLRepositoryServiceTest extends BaseRepositoryServiceTest {
     @Autowired
 	public SQLRepositoryService service;
     
-    @Autowired
-	public Schema schema;
-
-    boolean init = true;
     int connectionCount = 0;
-    
-    // TODO: make this BeforeAll in junit 5
-    public void initSchema() {
-        try {
-            schema.dropSchema();
-            schema.createSchema();
-            schema.updateSchema();
-        } catch(SQLException e) {
-            throw new RuntimeException(e);
-        }        
-    }
 
 	@Override
 	public RepositoryService service() {
-        //if (init) { init = false; initSchema(); };
 		return service;
 	}
     

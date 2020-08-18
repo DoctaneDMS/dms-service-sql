@@ -12,9 +12,6 @@ import com.softwareplumbers.common.immutablelist.QualifiedName;
 import com.softwareplumbers.common.sql.AbstractInterface;
 import com.softwareplumbers.common.sql.FluentStatement;
 import com.softwareplumbers.common.sql.Mapper;
-import com.softwareplumbers.common.sql.OperationStore;
-import com.softwareplumbers.common.sql.Schema;
-import com.softwareplumbers.common.sql.TemplateStore;
 import com.softwareplumbers.dms.Constants;
 import com.softwareplumbers.dms.Document;
 import com.softwareplumbers.dms.DocumentLink;
@@ -531,13 +528,13 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
     
     public <T> Stream<T> getDocuments(Id id, Query query, Mapper<T> mapper) throws SQLException {
         LOG.entry(id, query, mapper);
-        Stream<T> result = FluentStatement.of(getDocumentSearchHistorySQL(query)).set(Types.ID, 1, id).execute(schema.datasource, mapper);
+        Stream<T> result = FluentStatement.of(getDocumentSearchHistorySQL(query)).set(Types.ID, 1, id).execute(database.getDataSource(), mapper);
         return LOG.exit(result);
     }
     
     public <T> Stream<T> getDocuments(Query query, boolean searchHistory, Mapper<T> mapper) throws SQLException {
         LOG.entry(query, searchHistory, mapper);
-        Stream<T> result = FluentStatement.of(getDocumentSearchSQL(query, searchHistory)).execute(schema.datasource, mapper);
+        Stream<T> result = FluentStatement.of(getDocumentSearchSQL(query, searchHistory)).execute(database.getDataSource(), mapper);
         return LOG.exit(result);
     }
     
@@ -610,7 +607,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             // free search
             Stream<T> result = FluentStatement
                 .of(searchFolderSQL(RepositoryPath.ROOT, path, filter, includeDeleted))
-                .execute(schema.datasource, mapper);
+                .execute(database.getDataSource(), mapper);
             if (mapper == GET_WORKSPACE) {
                 // Can't do this in simple map because of connection issues with deferred execution.
                 // However, not a big deal as the primary use case for this is fetching the links related to a
@@ -626,7 +623,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             if (!basePath.isPresent()) return LOG.exit(Stream.empty());
             Stream<T> result = FluentStatement
                 .of(searchFolderSQL(basePath.get(), path, filter, includeDeleted))
-                .execute(schema.datasource, mapper);
+                .execute(database.getDataSource(), mapper);
             return LOG.exit(result);
         }
     }
@@ -979,7 +976,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         if (path.isEmpty()) {
             Stream<T> result = FluentStatement
                 .of(searchDocumentLinkSQL(RepositoryPath.ROOT, path, filter, includeDeleted))
-                .execute(schema.datasource, mapper);
+                .execute(database.getDataSource(), mapper);
             if (mapper == GET_LINK) {
                 // Can't do this in simple map because of connection issues with deferred execution.
                 // However, not a big deal as the primary use case for this is fetching the links related to a
@@ -994,7 +991,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             if (!basePath.isPresent()) return LOG.exit(Stream.empty());
             Stream<T> result = FluentStatement
                 .of(searchDocumentLinkSQL(basePath.get(), path, filter, includeDeleted))
-                .execute(schema.datasource, mapper);
+                .execute(database.getDataSource(), mapper);
             return result;
         }        
     }

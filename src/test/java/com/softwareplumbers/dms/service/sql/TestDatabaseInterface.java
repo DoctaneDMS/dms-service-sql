@@ -14,6 +14,7 @@ import com.softwareplumbers.dms.Exceptions.InvalidWorkspace;
 import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.Workspace;
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Optional;
 import java.util.Random;
@@ -47,16 +48,15 @@ public class TestDatabaseInterface {
     DocumentDatabase factory;
     
     @Autowired
-    Schema schema;
-    
-    @Autowired
     Environment env;
     
     @Before
     public void createSchema() throws SQLException {
-        schema.dropSchema();        
-        schema.createSchema();        
-        schema.updateSchema();        
+        try (Connection con = factory.getDataSource().getConnection()) {
+            factory.getSchema().getDropScript().runScript(con);
+            factory.getSchema().getCreateScript().runScript(con);
+            factory.getSchema().getUpdateScript().runScript(con);
+        }
     }
 
     public static final RepositoryPath TEST_PATH_0 = RepositoryPath.valueOf("~id");    
@@ -70,35 +70,35 @@ public class TestDatabaseInterface {
     public static final RepositoryPath TEST_PATH_ID1 = RepositoryPath.valueOf("one/~id1");
     
     public enum Dialect {
-        MYSQL,
-        H2
+        h2,
+        mysql
     }
     
     private Dialect dialect() {
-        String dialect = env.getProperty("test.dialect");
-        return (dialect == null) ? Dialect.H2 : Dialect.valueOf(dialect);
+        String dialect = env.getProperty("database.variant");
+        return (dialect == null) ? Dialect.h2 : Dialect.valueOf(dialect);
     }
     
     private String ternaryIf(String expr, String ifTrue, String ifFalse) {
         switch (dialect()) {
-            case MYSQL: return String.format("IF(%s, %s, %s)", expr, ifTrue, ifFalse);
-            case H2: return String.format("CASEWHEN(%s, %s, %s)", expr, ifTrue, ifFalse);
+            case mysql: return String.format("IF(%s, %s, %s)", expr, ifTrue, ifFalse);
+            case h2: return String.format("CASEWHEN(%s, %s, %s)", expr, ifTrue, ifFalse);
             default: throw new RuntimeException("Unknown dialect");
         }
     }
 
     private String concat(String... elements) {
         switch (dialect()) {
-            case MYSQL: return String.format("CONCAT(%s)", Stream.of(elements).collect(Collectors.joining(", ")));
-            case H2: return Stream.of(elements).collect(Collectors.joining(" || "));
+            case mysql: return String.format("CONCAT(%s)", Stream.of(elements).collect(Collectors.joining(", ")));
+            case h2: return Stream.of(elements).collect(Collectors.joining(" || "));
             default: throw new RuntimeException("Unknown dialect");
         }
     }
     
     private String toUuid(String expr) {
         switch (dialect()) {
-            case MYSQL: return String.format("BIN_TO_UUID(%s)", expr);
-            case H2: return expr;
+            case mysql: return String.format("BIN_TO_UUID(%s)", expr);
+            case h2: return expr;
             default: throw new RuntimeException("Unknown dialect");
         }        
     }

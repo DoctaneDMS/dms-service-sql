@@ -1,20 +1,23 @@
 <?xml version = "1.0" encoding = "UTF-8"?>
 
 <beans xmlns="http://www.springframework.org/schema/beans"
-        xmlns:context="http://www.springframework.org/schema/context"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="
- 	http://www.springframework.org/schema/beans
-	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
-       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
-       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd" xmlns:aop="http://www.springframework.org/schema/aop">
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd" 
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    default-lazy-init="true"
+>
     
     <context:annotation-config />
     
     <bean id="conversionService"
     class="org.springframework.context.support.ConversionServiceFactoryBean"/>
       
-    <bean id="dms.dropScript" class="com.softwareplumbers.common.sql.Script">
+    <bean id="h2.dms.dropScript" class="com.softwareplumbers.common.sql.Script">
         <property name="sql" >
             <value>
                 DROP VIEW IF EXISTS VIEW_FOLDERS;
@@ -31,7 +34,7 @@
         </property>
     </bean>
         
-    <bean id="dms.createScript" class="com.softwareplumbers.common.sql.Script">
+    <bean id="h2.dms.createScript" class="com.softwareplumbers.common.sql.Script">
         <property name="sql" >
             <value>
                 CREATE TABLE NODES (
@@ -79,7 +82,7 @@
         </property>
     </bean>
     
-    <bean id="dms.updateScript" class="com.softwareplumbers.common.sql.Script">        
+    <bean id="h2.dms.updateScript" class="com.softwareplumbers.common.sql.Script">        
         <property name="sql">
             <value>
                 
@@ -210,7 +213,7 @@
         </property>
     </bean>
     
-    <bean id="dms.operations" class="com.softwareplumbers.common.sql.OperationStore" scope="singleton">
+    <bean id="h2.dms.operations" class="com.softwareplumbers.common.sql.OperationStore" scope="singleton">
         <constructor-arg>
             <map key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Operation">
                 <entry key="fetchPathToId">
@@ -412,7 +415,7 @@
         </constructor-arg>
     </bean>
     
-    <bean id="dms.templates" class="com.softwareplumbers.common.sql.TemplateStore" scope="singleton"> 
+    <bean id="h2.dms.templates" class="com.softwareplumbers.common.sql.TemplateStore" scope="singleton"> 
         <constructor-arg>
             <map key-type="com.softwareplumbers.dms.service.sql.DocumentDatabase.Template">
                 <entry key="fetchDocumentLink">
@@ -487,14 +490,13 @@
         </constructor-arg>
     </bean>
 
-    <bean id="dms.schema" class="com.softwareplumbers.common.sql.Schema"> 
-        <constructor-arg ref="dms.datasource"/>
-        <property name="createScript" ref="dms.createScript"/>
-        <property name="updateScript" ref="dms.updateScript"/>
-        <property name="dropScript" ref="dms.dropScript"/>
+    <bean id="h2.dms.schema" class="com.softwareplumbers.common.sql.Schema"> 
+        <property name="createScript" ref="h2.dms.createScript"/>
+        <property name="updateScript" ref="h2.dms.updateScript"/>
+        <property name="dropScript" ref="h2.dms.dropScript"/>
         <property name="supportedEntities" value="com.softwareplumbers.dms.service.sql.DocumentDatabase.EntityType"/>
         <property name="supportedTypes" value="com.softwareplumbers.dms.service.sql.DocumentDatabase.DataType"/>        
         <property name="entityMap" ref="dms.entityMap"/>        
     </bean>
-    
+        
 </beans>
