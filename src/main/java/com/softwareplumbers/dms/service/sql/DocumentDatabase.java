@@ -22,6 +22,9 @@ public class DocumentDatabase extends AbstractDatabase<DocumentDatabase.EntityTy
     public DocumentDatabase(DataSource datasource, Schema<EntityType, DataType> schema) {
         super(datasource, schema);
     }
+    
+    public DocumentDatabase() {        
+    }
 
     @Override
     public DatabaseInterface createInterface() throws SQLException {
