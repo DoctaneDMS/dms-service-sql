@@ -115,17 +115,6 @@ public class SQLRepositoryService implements RepositoryService {
         this.filestore = filestore;
     }
     
-    public SQLRepositoryService(DocumentDatabase dbFactory) {
-        this.dbFactory = dbFactory;
-        this.filestore = new LocalFilesystem();
-    }
-    
-    @Required
-    public void setFilestore(Filestore filestore) {
-        this.filestore = filestore;
-    }
-    
-
     @Override
     public Reference createDocument(String mediaType, InputStreamSupplier iss, JsonObject metadata) {
         LOG.entry(mediaType, iss, metadata);
