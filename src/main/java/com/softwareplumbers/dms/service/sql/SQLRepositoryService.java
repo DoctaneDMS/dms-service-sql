@@ -115,7 +115,6 @@ public class SQLRepositoryService implements RepositoryService {
         this.filestore = filestore;
     }
     
-    @Autowired
     public SQLRepositoryService(DocumentDatabase dbFactory) {
         this.dbFactory = dbFactory;
         this.filestore = new LocalFilesystem();
