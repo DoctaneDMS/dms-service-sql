@@ -1,17 +1,23 @@
 package com.softwareplumbers.dms.service.sql;
 
 import com.softwareplumbers.common.sql.AbstractDatabase;
+import com.softwareplumbers.common.sql.DatabaseConfig;
+import com.softwareplumbers.common.sql.DatabaseConfigFactory;
 import com.softwareplumbers.common.sql.OperationStore;
 import com.softwareplumbers.common.sql.Schema;
 import com.softwareplumbers.common.sql.TemplateStore;
 import com.softwareplumbers.dms.common.test.TestModel;
+import static com.softwareplumbers.dms.service.sql.DocumentDatabase.*;
+import java.net.URI;
 import java.nio.file.Paths;
 import java.sql.SQLException;
+import java.util.Properties;
 import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceBuilder;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ImportResource;
 import org.springframework.core.env.Environment;
@@ -31,38 +37,36 @@ public class LocalConfig {
     
     @Autowired
     Environment env;
+       
+    @Autowired
+    ApplicationContext context;
     
     @Bean public Filestore filestore() {
         return new LocalFilesystem(Paths.get(env.getProperty("installation.root")).resolve("documents"));
     }
     
-    @ConditionalOnProperty(value = "database.variant", havingValue = "h2")
-    @Bean public DocumentDatabase databaseH2(
-        @Qualifier(value="h2.dms.operations") OperationStore<DocumentDatabase.Operation> operations,
-        @Qualifier(value="h2.dms.templates") TemplateStore<DocumentDatabase.Template> templates,
-        @Qualifier(value="h2.dms.schema") Schema schema
-    ) throws SQLException {
-        DocumentDatabase database = new DocumentDatabase(datasource(), schema);
-        database.setOperations(operations);
-        database.setTemplates(templates);
-        database.setCreateOption(AbstractDatabase.CreateOption.RECREATE);
-        return database;
-    }
-
-    @ConditionalOnProperty(value = "database.variant", havingValue = "mysql")
-    @Bean public DocumentDatabase databaseMySql(
-        @Qualifier(value="mysql.dms.operations") OperationStore<DocumentDatabase.Operation> operations,
-        @Qualifier(value="mysql.dms.templates") TemplateStore<DocumentDatabase.Template> templates,
-        @Qualifier(value="mysql.dms.schema") Schema schema
-    ) throws SQLException {
-        DocumentDatabase database = new DocumentDatabase(datasource(), schema);
-        database.setOperations(operations);
-        database.setTemplates(templates);
-        database.setCreateOption(AbstractDatabase.CreateOption.RECREATE);
-        return database;
-    }
-
+    @Bean
+    public DatabaseConfigFactory<EntityType, DataType, Operation, Template> configFactory() {
+        return variant-> {
+            switch(variant) {
+                case H2: return context.getBean("h2.dms.config", DatabaseConfig.class);
+                case MYSQL: return context.getBean("mysql.dms.config", DatabaseConfig.class);
+                default: throw new RuntimeException("Unhandled variant " + variant);
+            }
+        };                  
+    }    
     
+    public Properties dbCredentials() {
+        Properties credentials = new Properties();
+        credentials.put("username", env.getProperty("database.user"));
+        credentials.put("password", env.getProperty("database.password"));
+        return credentials;
+    }
+    
+    @Bean public DocumentDatabase database(DatabaseConfigFactory<EntityType, DataType, Operation, Template> config) throws SQLException {
+        return new DocumentDatabase(URI.create(env.getProperty("database.url")), dbCredentials(), config, CreateOption.RECREATE);
+    }
+   
     @Bean public SQLRepositoryService service(DocumentDatabase database, Filestore filestore) throws SQLException {
         return new SQLRepositoryService(database, filestore);
     }

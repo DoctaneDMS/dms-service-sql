@@ -10,26 +10,46 @@ import com.softwareplumbers.common.sql.CustomType;
 import com.softwareplumbers.common.sql.FluentStatement;
 import com.softwareplumbers.dms.RepositoryPath;
 import com.softwareplumbers.dms.RepositoryPath.Version;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 /**
  *
  * @author jonathan
  */
 public class Types {
-    public static final CustomType<Id> ID = (statement, index, value) -> {
-        if (value == null) statement.setNull(index,  java.sql.Types.BINARY);
-        else statement.setBytes(index, value.getBytes());            
+    public static final CustomType<Id> ID = new CustomType<Id>() {
+        
+        @Override
+        public void set(PreparedStatement statement, int index, Id value) throws SQLException {
+            if (value == null) statement.setNull(index,  java.sql.Types.BINARY);
+            else statement.setBytes(index, value.getBytes());            
+        };
+
+        @Override
+        public String format(Id t) {
+            return t.toString();
+        }
     };
     
-    public static final CustomType<Version> VERSION = (statement, index, value) -> {
-        if (value == null) 
-            statement.setNull(index,  java.sql.Types.VARCHAR);
-        else if (value.getName().isPresent()) 
-            statement.setString(index, value.getName().get());
-        else if (value.getId().isPresent()) 
-            statement.setBytes(index, Id.of(value.getId().get()).getBytes());
-        else
-            statement.setString(index, "");
+    public static final CustomType<Version> VERSION = new CustomType<Version>() {
+        
+        @Override
+        public void set(PreparedStatement statement, int index, Version value) throws SQLException {
+            if (value == null) 
+                statement.setNull(index,  java.sql.Types.VARCHAR);
+            else if (value.getName().isPresent()) 
+                statement.setString(index, value.getName().get());
+            else if (value.getId().isPresent()) 
+                statement.setBytes(index, Id.of(value.getId().get()).getBytes());
+            else
+                statement.setString(index, "");
+        }
+        
+        @Override
+        public String format(Version value) {
+            return value.toString();
+        }        
     };
     
     public static final CompositeType<RepositoryPath> PATH = Types::setRepositoryPath;

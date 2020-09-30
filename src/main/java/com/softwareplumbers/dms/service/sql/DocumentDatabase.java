@@ -6,22 +6,50 @@
 package com.softwareplumbers.dms.service.sql;
 
 import com.softwareplumbers.common.sql.AbstractDatabase;
+import com.softwareplumbers.common.sql.DatabaseConfig;
+import com.softwareplumbers.common.sql.DatabaseConfigFactory;
 import com.softwareplumbers.common.sql.Schema;
 import java.sql.SQLException;
 import java.util.function.BiFunction;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 import javax.sql.DataSource;
+import static com.softwareplumbers.dms.service.sql.DocumentDatabase.*;
+import com.zaxxer.hikari.HikariDataSource;
+import java.net.URI;
+import java.util.Properties;
 
 /**
  *
  * @author jonathan
  */
-public class DocumentDatabase extends AbstractDatabase<DocumentDatabase.EntityType, DocumentDatabase.DataType, DocumentDatabase.Operation, DocumentDatabase.Template, DatabaseInterface> {
+public class DocumentDatabase extends AbstractDatabase<EntityType, DataType, Operation, Template, DatabaseInterface> {
 
-    public DocumentDatabase(DataSource datasource, Schema<EntityType, DataType> schema) {
-        super(datasource, schema);
+    private static DataSource getDatasource(URI jdbcURI, Properties properties) throws SQLException {
+        HikariDataSource ds = new HikariDataSource();
+        ds.setDataSourceProperties(properties);
+        ds.setJdbcUrl(jdbcURI.toString());
+        ds.setUsername(properties.getProperty("username"));
+        ds.setPassword(properties.getProperty("password"));    
+        return ds;
     }
+    
+    public DocumentDatabase(DataSource datasource, DatabaseConfig<EntityType, DataType, Operation, Template> config) {
+        super(datasource, config);
+    }
+    
+    public DocumentDatabase(DataSource datasource, DatabaseConfigFactory<EntityType, DataType, Operation, Template> config, CreateOption createOption) throws SQLException {
+        super(datasource, config, createOption);
+    }
+    
+    public DocumentDatabase(URI jdbcURI, Properties properties, DatabaseConfig<EntityType, DataType, Operation, Template> config) throws SQLException {
+        super(getDatasource(jdbcURI, properties), config);
+    }
+
+    public DocumentDatabase(URI jdbcURI, Properties properties, DatabaseConfigFactory<EntityType, DataType, Operation, Template> config, CreateOption createOption) throws SQLException {
+        super(getDatasource(jdbcURI, properties), config, createOption);
+    }    
+    
     
     public DocumentDatabase() {        
     }

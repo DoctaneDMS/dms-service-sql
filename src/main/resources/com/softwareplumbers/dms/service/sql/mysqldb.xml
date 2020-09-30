@@ -500,5 +500,9 @@
         <property name="entityMap" ref="dms.entityMap"/>
     </bean>
     
-    
+    <bean id="mysql.dms.config" class="com.softwareplumbers.common.sql.DatabaseConfig">
+        <property name="schema" ref="mysql.dms.schema"/>
+        <property name="operations" ref="mysql.dms.operations"/>
+        <property name="templates" ref="mysql.dms.templates"/>
+    </bean>    
 </beans>

@@ -498,5 +498,11 @@
         <property name="supportedTypes" value="com.softwareplumbers.dms.service.sql.DocumentDatabase.DataType"/>        
         <property name="entityMap" ref="dms.entityMap"/>        
     </bean>
+    
+    <bean id="h2.dms.config" class="com.softwareplumbers.common.sql.DatabaseConfig">
+        <property name="schema" ref="h2.dms.schema"/>
+        <property name="operations" ref="h2.dms.operations"/>
+        <property name="templates" ref="h2.dms.templates"/>
+    </bean>  
         
 </beans>
