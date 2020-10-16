@@ -108,6 +108,19 @@ Then finally we can create the SQLRepositoryService bean itself:
         <constructor-arg ref="filestore"/> 
     </bean>
 ```
+
+We can also configure the optional MBean interface. This allows certain administrative operations
+to be performed on a running server via jConsole or (if supported) through the application 
+server's administrative interface. Generally it is not recommended that these MBeans are deployed
+in a production environment; if so, steps should be taken to secure the JMX interface of the
+server process.
+
+```xml
+    <bean class="com.softwareplumbers.dms.service.s1q.SQLRepositoryServiceMBean" scope="singleton">
+        <constructor-arg ref="dms.database"/>
+        <constructor-arg ref="filestore"/> 
+    </bean>
+```
  
 ### LocalConfig.java
 
@@ -157,3 +170,13 @@ public class LocalConfig {
     }
 }
 ```
+
+## Management Bean Functions
+
+For SQLRepositoryService, the mbean interface supports a single method, integrityCheck, which takes
+a string argument - which should be a path to a folder, and a boolean parameter, 'fix'.
+
+Calling integrityCheck on a given folder will recalculate the digest for every file in that folder and
+subfolders, logging any instances where the calculated digest differs from the value stored in the
+database. If the 'fix' parameter is 'true', then the integrityCheck function will report any mismatches
+then store the calculated value for any mismatched document in the database.
