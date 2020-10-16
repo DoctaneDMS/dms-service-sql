@@ -80,6 +80,10 @@ public class LocalConfig {
         return dataSourceBuilder.build();        
     }
     
+    @Bean public SQLRepositoryServiceMBean mbean(DocumentDatabase database, Filestore files) {
+        return new SQLRepositoryServiceMBean(database, files);
+    }
+    
     @Bean public TestModel documentMetadataModel() {
         TestModel.Field uniqueField = new TestModel.IdField("DocFaceRef");
         TestModel model = new TestModel(

@@ -43,10 +43,11 @@ public class SQLRepositoryServiceMBean {
     void checkIntegrity(String path, boolean fix, IntegrityCheckStatus status) {
         LOG.entry(path, fix, status);
         try (DatabaseInterface ifc = database.getInterface()) {            
-            try (Stream<DocumentLink> docs = ifc.getDocumentLinks(RepositoryPath.ROOT, Query.UNBOUNDED, true, DatabaseInterface.GET_LINK)) {
+            try (Stream<DocumentLink> docs = ifc.getDocumentLinks(RepositoryPath.valueOf(path).add("*").setVersion("*"), Query.UNBOUNDED, true, DatabaseInterface.GET_LINK)) {
                 docs.forEach(link->{
                     try {
-                        StreamInfo info = StreamInfo.of(()->filestore.get(filestore.parseKey(link.getVersion())));
+                        LOG.trace("Got link {}", link.getReference());
+                        StreamInfo info = StreamInfo.of(()->filestore.get(filestore.parseKey(link.getReference().getVersion())));
                         if (Arrays.equals(info.digest, link.getDigest())) {
                             LOG.info("OK: {}", link.getName());
                             status.ok++;
@@ -57,6 +58,7 @@ public class SQLRepositoryServiceMBean {
                             status.failed++;
                             if (fix) {
                                 ifc.updateDigest(link.getReference(), info.digest);
+                                ifc.commit();
                                 status.fixed++;
                             }
                         }
@@ -67,7 +69,7 @@ public class SQLRepositoryServiceMBean {
                     }
                 });
             }             
-            try (Stream<Workspace> docs = ifc.getFolders(RepositoryPath.ROOT, Query.UNBOUNDED, true, DatabaseInterface.GET_WORKSPACE)) {
+            try (Stream<Workspace> docs = ifc.getFolders(RepositoryPath.valueOf(path).add("*"), Query.UNBOUNDED, true, DatabaseInterface.GET_WORKSPACE)) {
                 docs.forEach(workspace->{
                     checkIntegrity(path + "/" + workspace.getName().part, fix, status);
                 });

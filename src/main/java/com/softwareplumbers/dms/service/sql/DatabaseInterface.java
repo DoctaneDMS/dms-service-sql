@@ -1009,9 +1009,9 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
     void updateDigest(Reference reference, byte[] digest) throws SQLException {
         LOG.entry(reference, digest);
         operations.getStatement(Operation.updateDigest)
-            .set(Types.ID, 1, Id.of(reference.id))
-            .set(Types.ID, 2, Id.of(reference.version))
-            .set(3, digest)
+            .set(1, digest)
+            .set(Types.ID, 2, Id.of(reference.id))
+            .set(Types.ID, 3, Id.of(reference.version))
             .execute(con);             
         LOG.exit();  
     }
