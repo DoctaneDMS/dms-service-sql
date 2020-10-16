@@ -1005,4 +1005,14 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         operations.getStatement(Operation.deleteObject).set(Types.ID, 1, objectId).execute(con);
         LOG.exit();
     }    
+
+    void updateDigest(Reference reference, byte[] digest) throws SQLException {
+        LOG.entry(reference, digest);
+        operations.getStatement(Operation.updateDigest)
+            .set(Types.ID, 1, Id.of(reference.id))
+            .set(Types.ID, 2, Id.of(reference.version))
+            .set(3, digest)
+            .execute(con);             
+        LOG.exit();  
+    }
 }
