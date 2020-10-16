@@ -8,13 +8,13 @@ package com.softwareplumbers.dms.service.sql;
 import com.softwareplumbers.common.sql.AbstractDatabase;
 import com.softwareplumbers.common.sql.DatabaseConfig;
 import com.softwareplumbers.common.sql.DatabaseConfigFactory;
-import com.softwareplumbers.common.sql.Schema;
 import java.sql.SQLException;
 import java.util.function.BiFunction;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 import javax.sql.DataSource;
 import static com.softwareplumbers.dms.service.sql.DocumentDatabase.*;
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.net.URI;
 import java.util.Properties;
@@ -26,12 +26,14 @@ import java.util.Properties;
 public class DocumentDatabase extends AbstractDatabase<EntityType, DataType, Operation, Template, DatabaseInterface> {
 
     private static DataSource getDatasource(URI jdbcURI, Properties properties) throws SQLException {
-        HikariDataSource ds = new HikariDataSource();
-        ds.setDataSourceProperties(properties);
-        ds.setJdbcUrl(jdbcURI.toString());
-        ds.setUsername(properties.getProperty("username"));
-        ds.setPassword(properties.getProperty("password"));    
-        return ds;
+        HikariConfig config = new HikariConfig();      
+        config.setDataSourceProperties(properties);
+        config.setJdbcUrl(jdbcURI.toString());
+        config.setUsername(properties.getProperty("username"));
+        config.setPassword(properties.getProperty("password"));
+        if (properties.containsKey("driverClassName")) config.setDriverClassName(properties.getProperty("driverClassName"));
+        if (properties.containsKey("connectionInitSql")) config.setConnectionInitSql(properties.getProperty("connectionInitSql"));        
+        return new HikariDataSource(config);
     }
     
     public DocumentDatabase(DataSource datasource, DatabaseConfig<EntityType, DataType, Operation, Template> config) {
@@ -99,7 +101,8 @@ public class DocumentDatabase extends AbstractDatabase<EntityType, DataType, Ope
         unlockVersions,
         copyNode,
         publishNode,
-        publishLink        
+        publishLink,
+        updateDigest
     }
     
 
