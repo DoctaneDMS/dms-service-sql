@@ -246,7 +246,11 @@
                         VALUES (?,?,?,?,?,?, CURRENT_TIMESTAMP)
                     </value>
                 </entry>
-
+                <entry key="updateDigest">
+                    <value>
+                        UPDATE VERSIONS SET DIGEST=? WHERE DOCUMENT_ID=? AND ID=?
+                    </value>
+                </entry>                
                 <entry key="createNode">
                     <value>
                         INSERT INTO NODES (ID, PARENT_ID, NAME, TYPE, DELETED) VALUES (?,?,?,?,FALSE) 
