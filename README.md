@@ -173,10 +173,10 @@ public class LocalConfig {
 
 ## Management Bean Functions
 
-For SQLRepositoryService, the mbean interface supports a single method, integrityCheck, which takes
+For SQLRepositoryService, the mbean interface supports a single method, checkIntegrity, which takes
 a string argument - which should be a path to a folder, and a boolean parameter, 'fix'.
 
-Calling integrityCheck on a given folder will recalculate the digest for every file in that folder and
+Calling checkIntegrity on a given folder will recalculate the digest for every file in that folder and
 subfolders, logging any instances where the calculated digest differs from the value stored in the
-database. If the 'fix' parameter is 'true', then the integrityCheck function will report any mismatches
+database. If the 'fix' parameter is 'true', then the checkIntegrity function will report any mismatches
 then store the calculated value for any mismatched document in the database.
