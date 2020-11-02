@@ -53,11 +53,11 @@ import javax.json.JsonWriter;
  * @author jonathan
  */
 public class DatabaseInterface extends AbstractInterface<DocumentDatabase.EntityType, DocumentDatabase.DataType, DocumentDatabase.Operation, DocumentDatabase.Template> {
-    
+
     public DatabaseInterface(DocumentDatabase db) throws SQLException {
         super(db);
     }
-    
+
     private static final String SAFE_CHARACTERS ="0123456789ABCDEFGHIJKLMNOPQURSTUVWYXabcdefghijklmnopqrstuvwxyz";
     private static final int MAX_SAFE_CHAR='z';
     private static final byte[] ROOT_ID = new byte[] { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
@@ -70,7 +70,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             return jsonReader.readObject();
         }
     }
-    
+
     public static final Mapper<Id> GET_ID = results -> {
         return new Id(results.getBytes("ID"));
     };
@@ -78,7 +78,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
     public static final Mapper<Id> GET_VERIFIED_ID = results -> {
         return new Id(results.getBytes("ID"));
     };
-    
+
     public static final Mapper<String> GET_NAME = results -> {
         return results.getString("NAME");
     };
@@ -93,13 +93,13 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         Instant updateTime = results.getTimestamp("CREATED").toInstant();
         return new DocumentImpl(new Reference(id.toString(),version.toString()), updateTime, mediaType, length, hash, metadata, false, LocalData.NONE);
     };
-    
+
     public static final Mapper<Reference> GET_REFERENCE = results -> {
         Id id = new Id(results.getBytes("DOCUMENT_ID"));
         Id version = new Id(results.getBytes("VERSION_ID"));
-        return new Reference(id.toString(),version.toString());        
+        return new Reference(id.toString(),version.toString());
     };
-    
+
     public Optional<RepositoryPath> getBasePath(Id id) throws SQLException {
         try (Stream<RepositoryPath> names = operations.getStatement(Operation.fetchPathToId)
             .set(Types.ID, 1, id)
@@ -107,9 +107,9 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         ) {
 
             return names.findFirst();
-        }                  
+        }
     }
-    
+
     public static DocumentLink getLink(ResultSet results, RepositoryPath basePath) throws SQLException {
         String mediaType = results.getString("MEDIA_TYPE");
         Id docId = new Id(results.getBytes("DOCUMENT_ID"));
@@ -121,23 +121,23 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         String version = results.getString("VERSION");
         Instant updateTime = results.getTimestamp("CREATED").toInstant();
         boolean deleted = results.getBoolean("DELETED");
-                
+
         Optional<RepositoryPath.IdElement> rootId = basePath.getRootId();
-                
+
         RepositoryPath name = basePath.addAll(RepositoryPath.valueOf(results.getString("PATH")));
         return new DocumentLinkImpl(id.toString(), version, name, deleted, new Reference(docId.toString(),docVersion.toString()), updateTime, mediaType, length, hash, metadata, false, LocalData.NONE);
     }
-    
+
     public static Mapper<DocumentLink> GET_LINK = rs -> getLink(rs, RepositoryPath.ROOT);
-    
+
     public static Consumer<Writer> clobWriter(JsonObject metadata) {
-        return out -> { 
-            try (JsonWriter writer = Json.createWriter(out)) { 
-                writer.write(metadata); 
-            } 
+        return out -> {
+            try (JsonWriter writer = Json.createWriter(out)) {
+                writer.write(metadata);
+            }
         };
     }
-    
+
 
     public static Mapper<Workspace> GET_WORKSPACE = results -> {
         Id id = new Id(results.getBytes("ID"));
@@ -148,7 +148,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         boolean deleted = results.getBoolean("DELETED");
         return new WorkspaceImpl(id.toString(), version, path, deleted, state, metadata, false, LocalData.NONE);
     };
-    
+
     public static Mapper<Info> GET_INFO = results -> {
         Id id = new Id(results.getBytes("ID"));
         Id parent_id = Id.of(results.getBytes("PARENT_ID"));
@@ -157,7 +157,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         boolean deleted = results.getBoolean("DELETED");
         return new Info(id, parent_id, name, type, deleted);
     };
-    
+
     Query getVersionQuery(Version version) {
         if (version.getPattern().isPresent()) {
             if (version.getPattern().get().isSimple()) {
@@ -167,34 +167,34 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             }
         }
         if (version.getId().isPresent()) {
-            return Query.from("reference", Query.from("version", Range.equals(Json.createValue(version.getName().get()))));            
+            return Query.from("reference", Query.from("version", Range.equals(Json.createValue(version.getName().get()))));
         }
         return Query.from("version", NULL_VERSION);
     }
-    
+
     Query getParameterizedVersionQuery(Version version, String paramName) {
         if (version.getName().isPresent()) {
             return Query.from("version", Range.equals(Param.from(paramName)));
         }
         if (version.getId().isPresent()) {
-            return Query.from("reference", Query.from("version", Range.equals(Param.from(paramName))));            
+            return Query.from("reference", Query.from("version", Range.equals(Param.from(paramName))));
         }
         return Query.from("version", Range.equals(Param.from(paramName)));
     }
-    
+
     Query getNameQuery(RepositoryPath name) {
-        
+
         if (name.isEmpty()) return Query.UNBOUNDED;
-        
+
         Query result;
-        
+
         if (name.parent.isEmpty()) {
             if (name.part.type != RepositoryPath.ElementType.ID) {
-                result = Query.from("parentId", Range.equals(Json.createValue(Id.ROOT_ID.toString())));              
+                result = Query.from("parentId", Range.equals(Json.createValue(Id.ROOT_ID.toString())));
             } else {
                 result = Query.UNBOUNDED;
             }
-        } else {        
+        } else {
             // First get the query for the parent part of the name
             if (name.parent.part.type == RepositoryPath.ElementType.ID) {
                 // this shortcut basically just avoids joining to the parent node if the criteria
@@ -204,7 +204,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                 result = Query.from("parent", getNameQuery(name.parent));
             }
         }
-        
+
         // Now add the query for this part of the name
         switch (name.part.type) {
             case NAME:
@@ -214,7 +214,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             case ID:
                 RepositoryPath.IdElement idElement = (RepositoryPath.IdElement)name.part;
                 if (name.parent.isEmpty()) {
-                    result = result.intersect(Query.from("id", Range.like(idElement.id)));                
+                    result = result.intersect(Query.from("id", Range.like(idElement.id)));
                 } else {
                     result = result.intersect(Query.from("reference", Query.from("id", Range.equals(Json.createValue(idElement.id)))));
                 }
@@ -223,55 +223,55 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                 throw new RuntimeException("Unsupported element type in path " + name);
         }
         return result;
-    } 
-    
-        
-    Query getVersionQuery(RepositoryPath name) {    
+    }
+
+
+    Query getVersionQuery(RepositoryPath name) {
         if (name.isEmpty()) return Query.UNBOUNDED;
-        
+
         Query result = Query.from("parent", getVersionQuery(name.parent));
-        
+
         // Now add the query for this part of the name
         switch (name.part.type) {
             case NAME:
                 RepositoryPath.NamedElement pathElement = (RepositoryPath.NamedElement)name.part;
-                result = result.intersect(getVersionQuery(pathElement.version));                
+                result = result.intersect(getVersionQuery(pathElement.version));
                 break;
             case ID:
                 RepositoryPath.IdElement idElement = (RepositoryPath.IdElement)name.part;
-                result = result.intersect(getVersionQuery(idElement.version));                
+                result = result.intersect(getVersionQuery(idElement.version));
                 break;
             default:
                 throw new RuntimeException("Unsupported element type in path " + name);
         }
         return result;
-    } 
-    
-    
+    }
+
+
     Query getDeletedQuery(RepositoryPath name) {
-        
+
         if (name.isEmpty()) return Query.UNBOUNDED;
-        
+
         Query result = Query.from("parent", getDeletedQuery(name.parent));
-        
+
         if (name.part.getVersion() == Version.NONE)
             result = result.intersect(Query.from("deleted", Range.equals(JsonValue.FALSE)));
-        
+
         return result;
-    }     
-    
-  
+    }
+
+
     Query getParameterizedNameQuery(String paramName, RepositoryPath name) {
-        
+
         if (name.isEmpty()) return Query.from("id", Range.equals(Param.from(paramName)));
-        
+
         Query result = Query.UNBOUNDED;
-                                
+
         // Now add the query for this part of the name
         switch (name.part.type) {
             case NAME:
                 result = result.intersect(Query.from("name", Range.equals(Param.from(paramName))));
-                result = result.intersect(getParameterizedVersionQuery(name.part.getVersion(), paramName+".version"));                
+                result = result.intersect(getParameterizedVersionQuery(name.part.getVersion(), paramName+".version"));
                 break;
             case ID:
                 if (name.parent.isEmpty()) {
@@ -283,15 +283,15 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                 break;
             default:
                 throw new RuntimeException("Unsupported element type in path " + name);
-        }        
+        }
 
         if (name.parent.isEmpty()) {
             if (name.part.type != RepositoryPath.ElementType.ID) {
                 result = Query
                     .from("parentId", Range.equals(Param.from("parent." + paramName)))
-                    .intersect(result);              
-            } 
-        } else {        
+                    .intersect(result);
+            }
+        } else {
             // First get the query for the parent part of the name
             if (name.parent.part.type == RepositoryPath.ElementType.ID) {
                 // this shortcut basically just avoids joining to the parent node if the criteria
@@ -305,28 +305,28 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                     .intersect(result);
             }
         }
-                
-        return result;        
+
+        return result;
     }
-    
-    
+
+
     String getNameExpression(RepositoryPath basePath, RepositoryPath path) {
         int depth = path.afterRootId().size();
-        String result = "'" + basePath.toString() + "'";      
+        String result = "'" + basePath.toString() + "'";
         for (int i = depth - 1; i >= 0 ; i--)
             result = templates.getSQL(Template.nameExpr, Integer.toString(i), result);
         return result;
     }
-    
+
     ParameterizedSQL getParametrizedNameExpression(RepositoryPath path) {
         int depth = path.afterRootId().size();
-        String result = "?";     
+        String result = "?";
         for (int i = depth - 1; i >= 0 ; i--)
             result = templates.getSQL(Template.nameExpr, Integer.toString(i), result);
         return new ParameterizedSQL(result, "basePath");
     }
-    
-    
+
+
     String getDocumentNameExpression(RepositoryPath basePath, RepositoryPath path) {
         int depth = path.afterRootId().size();
         String result = "'" + basePath.toString() + "'";
@@ -335,7 +335,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         if (depth > 0) result = templates.getSQL(Template.documentNameExpr, "0", result);
         return result;
     }
-    
+
     ParameterizedSQL getParametrizedDocumentNameExpression(RepositoryPath path) {
         int depth = path.afterRootId().size();
         String result = "?";
@@ -343,12 +343,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             result = templates.getSQL(Template.nameExpr, Integer.toString(i), result);
         if (depth > 0) result = templates.getSQL(Template.documentNameExpr, "0", result);
         return new ParameterizedSQL(result, "basePath");
-    }    
-    
+    }
+
     Query getDBFilterExpression(Iterable<QualifiedName> validFields, Query filter) {
         return StreamSupport.stream(validFields.spliterator(), false).reduce(Query.UNBOUNDED, (query, name) -> query.intersect(filter.getConstraint(name)), (query1, query2)->query1.intersect(query2));
     }
-        
+
     ParameterizedSQL getInfoSQL(RepositoryPath path) {
         int depth = path.getDocumentPath().size();
         ParameterizedSQL criteria = path.size() > 1 && path.part.getId().isPresent()
@@ -357,32 +357,32 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             : getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(EntityType.NODE));
         return templates.getParameterizedSQL(Template.fetchInfo, criteria);
     }
-    
+
     ParameterizedSQL getDocumentLinkSQL(RepositoryPath path) {
         Query query = getParameterizedNameQuery("path", path);
         if (path.part.getVersion() == Version.NONE)
             query = query.intersect(Query.from("current", Range.equals(JsonValue.TRUE)));
         //int depth = path.getDocumentPath().size();
-        // This test is only needed 
+        // This test is only needed
         //Type typeRequested = path.part.getVersion() != Version.NONE ? Type.DOCUMENT_LINK : Type.VERSION_LINK;
         ParameterizedSQL criteria = query.toExpression(schema.getFormatter(EntityType.LINK));
         ParameterizedSQL name =  getParametrizedDocumentNameExpression(path);
         return templates.getParameterizedSQL(Template.fetchDocumentLink, name, criteria);
     }
-    
+
     String getDocumentSearchSQL(Query query, boolean searchHistory) {
         query = getDBFilterExpression(schema.getFields(EntityType.VERSION), query);
         if (!searchHistory)
             query = query.intersect(Query.from("latest", Range.equals(JsonValue.TRUE)));
         return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(EntityType.VERSION)).sql);
     }
-    
+
     String getDocumentSearchHistorySQL(Query query) {
         query = getDBFilterExpression(schema.getFields(EntityType.VERSION), query);
         query = query.intersect(Query.from(QualifiedName.of("reference","id"), Range.equals(Param.from("0"))));
         return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(EntityType.VERSION)).sql);
     }
-        
+
     String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean includeDeleted) {
         filter = getDBFilterExpression(schema.getFields(EntityType.LINK), filter);
         // unless there is a wildcard in the version string for the final part of the address,
@@ -395,14 +395,14 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                 .intersect(getVersionQuery(nameWithPatterns));
         };
         if (!includeDeleted) {
-            filter = filter            
+            filter = filter
                 .intersect(getDeletedQuery(nameWithPatterns));
         }
         return templates.getSQL(Template.fetchDocumentLink, getDocumentNameExpression(basePath, nameWithPatterns), filter.toExpression(schema.getFormatter(EntityType.LINK)).sql);
     }
-    
+
     ParameterizedSQL getFolderSQL(RepositoryPath path) {
-        int depth = path.getDocumentPath().size();   
+        int depth = path.getDocumentPath().size();
         ParameterizedSQL criteria = getParameterizedNameQuery("path", path).toExpression(schema.getFormatter(EntityType.FOLDER));
         ParameterizedSQL name = getParametrizedNameExpression(path);
         return templates.getParameterizedSQL(Template.fetchFolder, name, criteria);
@@ -412,7 +412,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         filter = getDBFilterExpression(schema.getFields(EntityType.FOLDER), filter);
         if (!nameWithPatterns.isEmpty()) {
             filter=filter
-                .intersect(getNameQuery(nameWithPatterns))            
+                .intersect(getNameQuery(nameWithPatterns))
                 .intersect(getVersionQuery(nameWithPatterns));
         }
         if (!includeDeleted) {
@@ -424,7 +424,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
 
     public Optional<RepositoryPath> getPathTo(Id id) throws SQLException {
         LOG.entry(id);
-        if (id.equals(Id.ROOT_ID)) 
+        if (id.equals(Id.ROOT_ID))
             return LOG.exit(Optional.of(RepositoryPath.ROOT));
         else try (Stream<RepositoryPath> results = operations.getStatement(Operation.fetchPathToId)
                 .set(Types.ID, 1, id)
@@ -434,7 +434,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             );
         }
     }
-    
+
     public String generateUniqueName(Id id, final String nameTemplate) throws SQLException {
 		int separator = nameTemplate.lastIndexOf('.');
         String ext = "";
@@ -442,20 +442,20 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
 		if (separator >= 0) {
 			ext = baseName.substring(separator, baseName.length());
 			baseName = baseName.substring(0, separator);
-		} 
+		}
 
         Optional<String> match = Optional.empty();
         try (Stream<String> matches = operations.getStatement(Operation.fetchLastNameLike)
             .set(Types.ID, 1, id)
             .set(2, baseName+"%"+ext)
-            .execute(con, rs->{ 
-                String name = rs.getString(1); 
+            .execute(con, rs->{
+                String name = rs.getString(1);
                 return name == null ? "" : name;
             })
         ) {
             match = matches.findFirst();
         }
-       
+
         if (match.isPresent() && match.get().length() > 0) {
             String prev = match.get();
             int extIndex = prev.lastIndexOf(ext);
@@ -478,7 +478,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             return nameTemplate;
         }
     }
-    
+
     public void createDocument(Id id, Id version, String mediaType, long length, byte[] digest, JsonObject metadata) throws SQLException {
         LOG.entry(mediaType, length, digest, metadata);
         if (metadata == null) metadata = JsonObject.EMPTY_JSON_OBJECT;
@@ -489,14 +489,14 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(4, length)
             .set(5, digest)
             .set(6, clobWriter(metadata))
-            .execute(con);             
+            .execute(con);
         operations.getStatement(Operation.createDocument)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, version)
-            .execute(con);  
-        LOG.exit();        
+            .execute(con);
+        LOG.exit();
     }
-    
+
     public void createVersion(Id id, Id version, String mediaType, long length, byte[] digest, JsonObject metadata) throws SQLException {
         LOG.entry(mediaType, length, digest, metadata);
         operations.getStatement(Operation.createVersion)
@@ -506,12 +506,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(4, length)
             .set(5, digest)
             .set(6, clobWriter(metadata))
-            .execute(con);             
+            .execute(con);
         operations.getStatement(Operation.updateDocument)
             .set(Types.ID, 2, id)
             .set(Types.ID, 1, version)
-            .execute(con);  
-        LOG.exit();        
+            .execute(con);
+        LOG.exit();
     }
 
     public <T> Optional<T> getDocument(Id id, Id version, Mapper<T> mapper) throws SQLException {
@@ -526,19 +526,19 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             }
         }
     }
-    
+
     public <T> Stream<T> getDocuments(Id id, Query query, Mapper<T> mapper) throws SQLException {
         LOG.entry(id, query, mapper);
         Stream<T> result = FluentStatement.of(getDocumentSearchHistorySQL(query)).set(Types.ID, 1, id).execute(database.getDataSource(), mapper);
         return LOG.exit(result);
     }
-    
+
     public <T> Stream<T> getDocuments(Query query, boolean searchHistory, Mapper<T> mapper) throws SQLException {
         LOG.entry(query, searchHistory, mapper);
         Stream<T> result = FluentStatement.of(getDocumentSearchSQL(query, searchHistory)).execute(database.getDataSource(), mapper);
         return LOG.exit(result);
     }
-    
+
     public <T> Optional<RepositoryPath> getBasePath(RepositoryPath path, Mapper<T> mapper) throws SQLException {
         if (mapper == GET_WORKSPACE || mapper == GET_LINK) {
             Optional<RepositoryPath.IdElement> idElement = path.getRootId();
@@ -549,7 +549,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         }
         return Optional.of(RepositoryPath.ROOT);
     }
-    
+
     public <T> T createFolder(Id parentId, String name, Workspace.State state, JsonObject metadata, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
         LOG.entry(parentId, name, state, metadata);
         Id id = new Id();
@@ -564,11 +564,11 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(2, state.toString())
             .set(3, clobWriter(metadata))
             .execute(con);
-        
+
         RepositoryPath path = RepositoryPath.ROOT.addId(parentId.toString()).add(name);
         ParameterizedSQL sql = this.getFolderSQL(path);
         try (Stream<T> result = FluentStatement.of(sql.sql, sql.parameters)
-            .set("basePath", getBasePath(path, mapper).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path))).toString())    
+            .set("basePath", getBasePath(path, mapper).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path))).toString())
             .set(Types.PATH, "path", path)
             .execute(con, mapper)
         ) {
@@ -596,12 +596,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                 .set("basePath",basePath.get().toString())
                 .set(Types.PATH, "path", name)
                 .execute(con, mapper)
-            ) { 
+            ) {
                 return LOG.exit(result.findFirst());
             }
         }
     }
-    
+
     public <T> Stream<T> getFolders(RepositoryPath path, Query filter, boolean includeDeleted, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, SQLException {
         LOG.entry(path, mapper);
         if (path.isEmpty()) {
@@ -628,39 +628,45 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             return LOG.exit(result);
         }
     }
-        
-    public <T> Optional<T> getInfo(RepositoryPath name, Mapper<T> mapper) throws SQLException {
+
+    public <T> Stream<T> getInfos(RepositoryPath name, Mapper<T> mapper) throws SQLException {
         LOG.entry(name);
         Optional<RepositoryPath> basePath = getBasePath(name, mapper);
-        if (!basePath.isPresent()) return LOG.exit(Optional.empty());
+        if (!basePath.isPresent()) return LOG.exit(Stream.empty());
         ParameterizedSQL sql = getInfoSQL(name);
-        try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
-            .set(Types.PATH, "path", name)
-            .execute(con, mapper)) {
-            return LOG.exit(results.findFirst());
+        return LOG.exit(
+            FluentStatement.of(sql.sql, sql.parameters)
+                .set(Types.PATH, "path", name)
+                .execute(con, mapper)
+        );
+    }
+
+    public <T> Optional<T> getInfo(RepositoryPath name, Mapper<T> mapper) throws SQLException {
+        try (Stream<T> infos = getInfos(name, mapper)) {
+            return infos.findFirst();
         }
     }
-    
+
     public Stream<Info> getChildren(Id parentId) throws SQLException {
         LOG.entry(parentId);
         return LOG.exit(operations.getStatement(Operation.fetchChildren)
             .set(Types.ID, 1, parentId)
             .execute(con, GET_INFO)
-        );        
+        );
     }
-    
+
     public <T> Optional<T> getOrCreateFolder(Id parentId, String name, boolean optCreate, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
         Optional<T> folder = getFolder(RepositoryPath.ROOT.addId(parentId.toString()).add(name), mapper);
         if (!folder.isPresent() && optCreate)
             folder = Optional.of(createFolder(parentId, name, Workspace.State.Open, JsonObject.EMPTY_JSON_OBJECT, mapper));
         return folder;
     }
-    
 
-    
+
+
     public <T> Optional<T> getOrCreateFolder(RepositoryPath path, boolean optCreate, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, SQLException {
         LOG.entry(path, optCreate, mapper);
-        
+
         if (path.isEmpty()) return LOG.exit(getFolder(path, mapper));
 
         switch (path.part.type) {
@@ -679,22 +685,22 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                     }
                 }
             default:
-                throw LOG.throwing(new Exceptions.InvalidWorkspace(path));                    
+                throw LOG.throwing(new Exceptions.InvalidWorkspace(path));
         }
-        
+
     }
-    
+
     public <T> T copyFolder(RepositoryPath sourcePath, RepositoryPath targetPath, boolean optCreate, Mapper<T> mapper) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace {
         LOG.entry(sourcePath, targetPath, optCreate, mapper);
         Id idSrc = getFolder(sourcePath, GET_VERIFIED_ID)
             .orElseThrow(()->new Exceptions.InvalidWorkspace(sourcePath));
         Id folderId = getOrCreateFolder(targetPath.parent, optCreate, GET_ID)
             .orElseThrow(()->new Exceptions.InvalidWorkspace(targetPath.parent));
-        
+
         if (targetPath.part.type != RepositoryPath.ElementType.NAME) throw LOG.throwing(new Exceptions.InvalidObjectName(targetPath));
-        
+
         RepositoryPath.NamedElement docPart = (RepositoryPath.NamedElement)targetPath.part;
-        
+
         Id id = new Id();
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
@@ -706,7 +712,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, idSrc)
             .execute(con);
-        
+
         Iterable<Info> children = operations.getStatement(Operation.fetchChildren)
             .set(Types.ID, 1, idSrc)
             .execute(con, GET_INFO)
@@ -731,13 +737,13 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(1, getBasePath(resultPath, mapper).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(resultPath))).toString())
             .set(Types.PATH, "path", resultPath)
             .execute(con, mapper)
-        ) {        
+        ) {
             return LOG.exit(
                 results.findFirst()
                 .orElseThrow(()->LOG.throwing(new RuntimeException("returned no results"))));
         }
     }
-    
+
     public <T> T copyDocumentLink(RepositoryPath sourcePath, RepositoryPath targetPath, boolean optCreate, Mapper<T> mapper) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace {
         LOG.entry(sourcePath, targetPath, optCreate, mapper);
         Id idSrc = getDocumentLink(sourcePath, GET_ID)
@@ -745,10 +751,10 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         Id folderId = getOrCreateFolder(targetPath.parent, optCreate, GET_ID)
             .orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(targetPath.parent)));
         Id id = new Id();
-        
+
         if (targetPath.part.type != RepositoryPath.ElementType.NAME) throw LOG.throwing(new Exceptions.InvalidObjectName(targetPath));
         RepositoryPath.NamedElement linkName = (RepositoryPath.NamedElement)targetPath.part;
-        
+
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, folderId)
@@ -759,21 +765,21 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, idSrc)
             .execute(con);
-        
+
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(linkName);
-        
+
         ParameterizedSQL sql = getDocumentLinkSQL(shortResultPath);
         try (Stream<T> results = LOG.exit(FluentStatement.of(sql.sql, sql.parameters)
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(shortResultPath))).toString())
             .set(Types.PATH, "path", shortResultPath)
-            .execute(con, mapper))) {       
-        
+            .execute(con, mapper))) {
+
             return LOG.exit(results.findFirst()
                 .orElseThrow(()->new RuntimeException("returned no results"))
             );
         }
     }
-    
+
     public void copy(Id nodeId, Id newParentId) throws SQLException {
         LOG.entry(nodeId, newParentId);
         Id newId = new Id();
@@ -781,7 +787,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(Types.ID, 1, newId)
             .set(Types.ID, 2, newParentId)
             .set(Types.ID, 3, nodeId)
-            .execute(con); 
+            .execute(con);
         operations.getStatement(Operation.copyLink)
             .set(Types.ID, 1, newId)
             .set(Types.ID, 2, nodeId)
@@ -799,7 +805,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         }
         LOG.exit();
     }
-    
+
     public void publishChild(Id nodeId, Id newParentId) throws SQLException {
         LOG.entry(nodeId, newParentId);
         Id newId = new Id();
@@ -807,7 +813,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(Types.ID, 1, newId)
             .set(Types.ID, 2, newParentId)
             .set(Types.ID, 3, nodeId)
-            .execute(con); 
+            .execute(con);
         operations.getStatement(Operation.publishLink)
             .set(Types.ID, 1, newId)
             .set(Types.ID, 2, nodeId)
@@ -825,7 +831,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         }
         LOG.exit();
     }
-    
+
     public Id publish(Id nodeId, String version) throws SQLException {
         LOG.entry(nodeId, version);
         Id newId = new Id();
@@ -833,7 +839,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(Types.ID, 1, newId)
             .set(2, version)
             .set(Types.ID, 3, nodeId)
-            .execute(con); 
+            .execute(con);
         int links = operations.getStatement(Operation.publishLink)
             .set(Types.ID, 1, newId)
             .set(Types.ID, 2, nodeId)
@@ -842,7 +848,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(Types.ID, 1, newId)
             .set(Types.ID, 2, nodeId)
             .execute(con);
-        
+
         Iterable<Id> children = operations.getStatement(Operation.fetchChildren)
             .set(Types.ID, 1, nodeId)
             .execute(con, GET_ID)
@@ -850,10 +856,10 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         for (Id child : children) {
             publishChild(child, newId);
         }
-        
+
         return LOG.exit(newId);
     }
-        
+
     public <T> T createDocumentLink(Id folderId, String name, Id docId, Id version, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
         LOG.entry(folderId, name, docId, version);
         Id id = new Id();
@@ -869,20 +875,20 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(Types.ID, 3, version)
             .set(4, false)
             .execute(con);
-        
+
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(name);
-        
+
         ParameterizedSQL sql = getDocumentLinkSQL(shortResultPath);
         try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(shortResultPath))).toString())
             .set(Types.PATH, "path", shortResultPath)
-            .execute(con, mapper)) { 
+            .execute(con, mapper)) {
         return LOG.exit(
             results.findFirst()
                 .orElseThrow(()->new RuntimeException("returned no results")));
         }
     }
-       
+
     public <T> Optional<T> updateDocumentLink(Id folderId, String name, Id docId, Id version, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, SQLException {
         LOG.entry(folderId, name, docId, version);
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(name);
@@ -893,7 +899,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                 .set(Types.ID, 2, version)
                 .set(Types.ID, 3, info.get().id)
                 .execute(con);
-            
+
             ParameterizedSQL sql = getDocumentLinkSQL(shortResultPath);
             try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
             .set(1, getBasePath(shortResultPath, mapper).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(shortResultPath))).toString())
@@ -908,7 +914,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             return Optional.empty();
         }
     }
-    
+
     public <T> Optional<T> updateFolder(Id folderId, Workspace.State state, JsonObject metadata, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, SQLException {
         LOG.entry(folderId, state, metadata);
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString());
@@ -929,7 +935,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             );
         }
     }
-    
+
     public void lockVersions(Id folderId) throws SQLException {
         LOG.entry(folderId);
         operations.getStatement(Operation.lockVersions)
@@ -937,7 +943,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .execute(con);
         LOG.exit();
     }
-    
+
     public void unlockVersions(Id folderId) throws SQLException {
         LOG.entry(folderId);
         operations.getStatement(Operation.unlockVersions)
@@ -960,7 +966,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             return LOG.exit(result.findFirst());
         }
     }
-    
+
     public <T extends VersionedRepositoryObject> T getFullPath(T link) {
         try {
             RepositoryPath path = getPathTo(Id.of(link.getId()))
@@ -970,10 +976,10 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             throw new RuntimeException(e);
         }
     }
-    
+
     public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, boolean includeDeleted, Mapper<T> mapper) throws SQLException {
         LOG.entry(path, filter, mapper);
-        
+
         if (path.isEmpty()) {
             Stream<T> result = FluentStatement
                 .of(searchDocumentLinkSQL(RepositoryPath.ROOT, path, filter, includeDeleted))
@@ -994,43 +1000,53 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
                 .of(searchDocumentLinkSQL(basePath.get(), path, filter, includeDeleted))
                 .execute(database.getDataSource(), mapper);
             return result;
-        }        
+        }
     }
-    
-    public NamedRepositoryObject deleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
-        LOG.entry(path);
-        Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
-        if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
-        Info info = getInfo(path, GET_INFO)
-            .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
-        operations.getStatement(Operation.deleteObject).set(Types.ID, 1, info.id).execute(con);
 
-        switch(info.type) {
-            case DOCUMENT_LINK:
-                return LOG.exit(getDocumentLink(path, GET_LINK)).orElseThrow(()->new RuntimeException("failed to fetch deleted link"));
-            case WORKSPACE:
-                return LOG.exit(getFolder(path, GET_WORKSPACE)).orElseThrow(()->new RuntimeException("failed to fetch deleted workspace"));
-            default:
-                throw new RuntimeException("unknown type " + info.type);
-        }
-    }    
-    
-    public NamedRepositoryObject undeleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
+    public Stream<NamedRepositoryObject> deleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
         LOG.entry(path);
         Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
         if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
-        Info info = getInfo(path, GET_INFO)
-            .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
-        operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, info.id).execute(con);
-        switch(info.type) {
-            case DOCUMENT_LINK:
-                return LOG.exit(getDocumentLink(path, GET_LINK)).orElseThrow(()->new RuntimeException("failed to fetch undeleted link"));
-            case WORKSPACE:
-                return LOG.exit(getFolder(path, GET_WORKSPACE)).orElseThrow(()->new RuntimeException("failed to fetch undeleted workspace"));
-            default:
-                throw new RuntimeException("unknown type " + info.type);
-        }
-    }       
+        List<Info> infos = getInfos(path, GET_INFO).collect(Collectors.toList());
+        for (Info info : infos) operations.getStatement(Operation.deleteObject).set(Types.ID, 1, info.id).execute(con); 
+        return LOG.exit(infos.stream().map(info -> {
+            try {
+                switch(info.type) {
+                    case DOCUMENT_LINK:
+                        return getDocumentLink(path, GET_LINK).orElseThrow(()->new RuntimeException("failed to fetch deleted link"));
+                    case WORKSPACE:
+                        return getFolder(path, GET_WORKSPACE).orElseThrow(()->new RuntimeException("failed to fetch deleted workspace"));
+                    default:
+                        throw new RuntimeException("unknown type " + info.type);
+                }
+            } catch (SQLException sqe) {
+                throw new RuntimeException(sqe);
+            }
+        }));
+    }
+
+    public Stream<NamedRepositoryObject> undeleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
+        LOG.entry(path);
+        Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
+        if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
+        List<Info> infos = getInfos(path, GET_INFO).collect(Collectors.toList());
+        for (Info info : infos) operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, info.id).execute(con); 
+        return LOG.exit(infos.stream().map(info -> {
+            try {
+                operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, info.id).execute(con);        
+                switch(info.type) {
+                    case DOCUMENT_LINK:
+                        return getDocumentLink(path, GET_LINK).orElseThrow(()->new RuntimeException("failed to fetch undeleted link"));
+                    case WORKSPACE:
+                        return getFolder(path, GET_WORKSPACE).orElseThrow(()->new RuntimeException("failed to fetch undeleted workspace"));
+                    default:
+                        throw new RuntimeException("unknown type " + info.type);
+                }
+            } catch (SQLException sqe) {
+                throw new RuntimeException(sqe);
+            }
+        }));
+    }
 
     void updateDigest(Reference reference, byte[] digest) throws SQLException {
         LOG.entry(reference, digest);
@@ -1038,7 +1054,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             .set(1, digest)
             .set(Types.ID, 2, Id.of(reference.id))
             .set(Types.ID, 3, Id.of(reference.version))
-            .execute(con);             
-        LOG.exit();  
+            .execute(con);
+        LOG.exit();
     }
 }
