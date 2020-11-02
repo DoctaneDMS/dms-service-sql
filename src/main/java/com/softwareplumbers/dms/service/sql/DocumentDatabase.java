@@ -88,6 +88,7 @@ public class DocumentDatabase extends AbstractDatabase<EntityType, DataType, Ope
         createFolder,
         createLink,
         deleteObject,
+        undeleteObject,
         deleteDocumentById,
         fetchPathToId,
         fetchLastNameLike,

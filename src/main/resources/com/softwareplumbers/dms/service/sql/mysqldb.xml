@@ -402,6 +402,12 @@
                         UPDATE NODES SET DELETED=TRUE WHERE ID=?
                     </value>
                 </entry>
+                
+                <entry key="undeleteObject">
+                    <value>
+                        UPDATE NODES SET DELETED=FALSE WHERE ID=?
+                    </value>
+                </entry>                
 
                 <entry key="deleteDocumentById">
                     <value>

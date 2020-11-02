@@ -916,4 +916,36 @@ public class SQLRepositoryService implements RepositoryService {
             throw LOG.throwing(new RuntimeException(e));
         }
     }
+
+    @Override
+    public void undeleteDocument(RepositoryPath workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
+        if (workspacePath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(workspacePath, Workspace.State.Published));
+        LOG.entry(workspacePath, documentId);
+        try (
+            DatabaseInterface db = dbFactory.getInterface(); 
+        ) {
+            db.undeleteObject(workspacePath.addId(documentId));
+            db.commit();
+            LOG.exit();
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        } catch (Exceptions.InvalidObjectName e) {
+            throw LOG.throwing(new Exceptions.InvalidDocumentId(documentId));
+        }    }
+
+    @Override
+    public void undeleteObjectByName(RepositoryPath path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+        LOG.entry(path);
+        if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
+        if (path.isEmpty()) throw new Exceptions.InvalidObjectName(path);
+        try (
+            DatabaseInterface db = dbFactory.getInterface(); 
+        ) {
+            db.undeleteObject(path);
+            db.commit();
+            LOG.exit();
+        } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        }
+    }
 }

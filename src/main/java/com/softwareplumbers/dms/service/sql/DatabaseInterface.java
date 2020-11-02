@@ -1005,6 +1005,16 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         operations.getStatement(Operation.deleteObject).set(Types.ID, 1, objectId).execute(con);
         LOG.exit();
     }    
+    
+    public void undeleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
+        LOG.entry(path);
+        Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
+        if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
+        Id objectId = getInfo(path, GET_ID)
+            .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
+        operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, objectId).execute(con);
+        LOG.exit();
+    }       
 
     void updateDigest(Reference reference, byte[] digest) throws SQLException {
         LOG.entry(reference, digest);
