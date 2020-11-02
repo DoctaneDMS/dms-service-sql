@@ -592,15 +592,15 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public void deleteDocument(RepositoryPath workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
+    public DocumentLink deleteDocument(RepositoryPath workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
         if (workspacePath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(workspacePath, Workspace.State.Published));
         LOG.entry(workspacePath, documentId);
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
-            db.deleteObject(workspacePath.addId(documentId));
+            NamedRepositoryObject result = db.deleteObject(workspacePath.addId(documentId));
             db.commit();
-            LOG.exit();
+            return LOG.exit((DocumentLink)result);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         } catch (Exceptions.InvalidObjectName e) {
@@ -609,16 +609,16 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public void deleteObjectByName(RepositoryPath path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+    public NamedRepositoryObject deleteObjectByName(RepositoryPath path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         LOG.entry(path);
         if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         if (path.isEmpty()) throw new Exceptions.InvalidObjectName(path);
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
-            db.deleteObject(path);
+            NamedRepositoryObject result = db.deleteObject(path);
             db.commit();
-            LOG.exit();
+            return LOG.exit(result);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
@@ -918,15 +918,15 @@ public class SQLRepositoryService implements RepositoryService {
     }
 
     @Override
-    public void undeleteDocument(RepositoryPath workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
+    public DocumentLink undeleteDocument(RepositoryPath workspacePath, String documentId) throws Exceptions.InvalidWorkspace, Exceptions.InvalidDocumentId, Exceptions.InvalidWorkspaceState {
         if (workspacePath.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(workspacePath, Workspace.State.Published));
         LOG.entry(workspacePath, documentId);
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
-            db.undeleteObject(workspacePath.addId(documentId));
+            NamedRepositoryObject result = db.undeleteObject(workspacePath.addId(documentId));
             db.commit();
-            LOG.exit();
+            return LOG.exit((DocumentLink)result);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         } catch (Exceptions.InvalidObjectName e) {
@@ -934,16 +934,16 @@ public class SQLRepositoryService implements RepositoryService {
         }    }
 
     @Override
-    public void undeleteObjectByName(RepositoryPath path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
+    public NamedRepositoryObject undeleteObjectByName(RepositoryPath path) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspaceState {
         LOG.entry(path);
         if (path.find(RepositoryPath::isVersion).isPresent()) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path, Workspace.State.Published));
         if (path.isEmpty()) throw new Exceptions.InvalidObjectName(path);
         try (
             DatabaseInterface db = dbFactory.getInterface(); 
         ) {
-            db.undeleteObject(path);
+            NamedRepositoryObject result = db.undeleteObject(path);
             db.commit();
-            LOG.exit();
+            return LOG.exit(result);
         } catch (SQLException e) {
             throw LOG.throwing(new RuntimeException(e));
         }

@@ -29,6 +29,7 @@ import com.softwareplumbers.dms.service.sql.DocumentDatabase.Operation;
 import com.softwareplumbers.dms.service.sql.DocumentDatabase.Template;
 import com.softwareplumbers.dms.service.sql.DocumentDatabase.EntityType;
 import com.softwareplumbers.common.abstractquery.visitor.Visitors.ParameterizedSQL;
+import com.softwareplumbers.dms.NamedRepositoryObject;
 import com.softwareplumbers.dms.RepositoryPath.Version;
 import java.io.Reader;
 import java.io.Writer;
@@ -996,24 +997,39 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         }        
     }
     
-    public void deleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
+    public NamedRepositoryObject deleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
         LOG.entry(path);
         Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
         if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
-        Id objectId = getInfo(path, GET_ID)
+        Info info = getInfo(path, GET_INFO)
             .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
-        operations.getStatement(Operation.deleteObject).set(Types.ID, 1, objectId).execute(con);
-        LOG.exit();
+        operations.getStatement(Operation.deleteObject).set(Types.ID, 1, info.id).execute(con);
+
+        switch(info.type) {
+            case DOCUMENT_LINK:
+                return LOG.exit(getDocumentLink(path, GET_LINK)).orElseThrow(()->new RuntimeException("failed to fetch deleted link"));
+            case WORKSPACE:
+                return LOG.exit(getFolder(path, GET_WORKSPACE)).orElseThrow(()->new RuntimeException("failed to fetch deleted workspace"));
+            default:
+                throw new RuntimeException("unknown type " + info.type);
+        }
     }    
     
-    public void undeleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
+    public NamedRepositoryObject undeleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
         LOG.entry(path);
         Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
         if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
-        Id objectId = getInfo(path, GET_ID)
+        Info info = getInfo(path, GET_INFO)
             .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
-        operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, objectId).execute(con);
-        LOG.exit();
+        operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, info.id).execute(con);
+        switch(info.type) {
+            case DOCUMENT_LINK:
+                return LOG.exit(getDocumentLink(path, GET_LINK)).orElseThrow(()->new RuntimeException("failed to fetch undeleted link"));
+            case WORKSPACE:
+                return LOG.exit(getFolder(path, GET_WORKSPACE)).orElseThrow(()->new RuntimeException("failed to fetch undeleted workspace"));
+            default:
+                throw new RuntimeException("unknown type " + info.type);
+        }
     }       
 
     void updateDigest(Reference reference, byte[] digest) throws SQLException {
