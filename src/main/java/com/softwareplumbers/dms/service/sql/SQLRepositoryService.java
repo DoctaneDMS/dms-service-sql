@@ -302,11 +302,17 @@ public class SQLRepositoryService implements RepositoryService {
             Id versionId = Id.ofVersion(reference.version);
             Id folderId = Id.of(folder.getId());
             Document document = db.getDocument(docId, versionId, DatabaseInterface.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
+            if (Options.EXTERNAL_REFERENCE.isIn(options)) { 
+                StreamInfo info = StreamInfo.of(InputStreamSupplier.markPersistent(()->document.getData(this)));
+                db.updateDigest(reference, info.digest);
+            }
             String name = db.generateUniqueName(folderId, getBaseDocumentName(document.getMetadata()));
             DocumentLink result = db.createDocumentLink(folderId, name, docId, versionId, DatabaseInterface.GET_LINK);
             db.commit();               
             return result;
         } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        } catch (IOException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
     }
@@ -326,6 +332,14 @@ public class SQLRepositoryService implements RepositoryService {
             Id docId = Id.ofDocument(reference.id);
             Id versionId = filestore.parseKey(reference.version);
             //Document document = db.getDocument(docId, versionId, DatabaseInterface.GET_DOCUMENT).orElseThrow(()->new Exceptions.InvalidReference(reference));
+            if (Options.EXTERNAL_REFERENCE.isIn(options)) { 
+                try {
+                    StreamInfo info = StreamInfo.of(InputStreamSupplier.markPersistent(()->filestore.get(versionId)));
+                    db.updateDigest(reference, info.digest);
+                } catch (IOException ioe) {
+                    throw new Exceptions.InvalidReference(reference);
+                }
+            }            
             NamedElement namePart = (NamedElement)path.part;
             DocumentLink result;
             try {
@@ -436,7 +450,11 @@ public class SQLRepositoryService implements RepositoryService {
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
             Document document = db.getDocument(docId, versionId, DatabaseInterface.GET_DOCUMENT)
-                .orElseThrow(()->new Exceptions.InvalidReference(reference));            
+                .orElseThrow(()->new Exceptions.InvalidReference(reference));     
+            if (Options.EXTERNAL_REFERENCE.isIn(options)) { 
+                StreamInfo info = StreamInfo.of(InputStreamSupplier.markPersistent(()->document.getData(this)));
+                db.updateDigest(reference, info.digest);
+            }
             Optional<DocumentLink> result = db.updateDocumentLink(folderId, part.name, docId, versionId, DatabaseInterface.GET_LINK);
             if (!result.isPresent() && Options.CREATE_MISSING_ITEM.isIn(options)) {
                 result = Optional.of(db.createDocumentLink(folderId, part.name, docId, versionId, DatabaseInterface.GET_LINK));
@@ -444,6 +462,8 @@ public class SQLRepositoryService implements RepositoryService {
             db.commit();               
             return LOG.exit(result.orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path))));
         } catch (SQLException e) {
+            throw LOG.throwing(new RuntimeException(e));
+        } catch (IOException e) {
             throw LOG.throwing(new RuntimeException(e));
         }
     }
