@@ -103,10 +103,10 @@ public class DocumentDatabase extends AbstractDatabase<EntityType, DataType, Ope
         copyNode,
         publishNode,
         publishLink,
-        updateDigest
+        updateDigest, 
+        purgeChild
     }
     
-
     public static enum Template {
         fetchDocumentLink,
         fetchFolder,

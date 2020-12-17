@@ -755,6 +755,10 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         if (targetPath.part.type != RepositoryPath.ElementType.NAME) throw LOG.throwing(new Exceptions.InvalidObjectName(targetPath));
         RepositoryPath.NamedElement linkName = (RepositoryPath.NamedElement)targetPath.part;
 
+        operations.getStatement(Operation.purgeChild)
+            .set(Types.ID, 1, folderId)
+            .set(2, linkName.name)
+            .execute(con);
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, folderId)

@@ -403,6 +403,12 @@
                     </value>
                 </entry>
                 
+                <entry key="purgeChild">
+                    <value>
+                        DELETE NODES WHERE DELETED=TRUE AND PARENT_ID=? AND NAME=?
+                    </value>
+                </entry>                
+                
                 <entry key="undeleteObject">
                     <value>
                         UPDATE NODES SET DELETED=FALSE WHERE ID=?
