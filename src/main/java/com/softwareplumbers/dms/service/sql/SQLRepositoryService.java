@@ -5,6 +5,7 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.abstractpattern.Pattern;
 import com.softwareplumbers.common.abstractquery.AbstractSet;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.pipedstream.InputStreamSupplier;
@@ -224,13 +225,13 @@ public class SQLRepositoryService implements RepositoryService {
             Id folderId = Id.of(folder.getId());
             DocumentLink result;
             try {
-                result = db.createDocumentLink(folderId, linkPart.name, id, version, DatabaseInterface.GET_LINK);
+                result = db.createDocumentLink(folderId, linkPart.pattern, id, version, DatabaseInterface.GET_LINK);
             } catch (SQLIntegrityConstraintViolationException e) {
                 LOG.catching(Level.TRACE, e);
                 Info existing = db.getInfo(path, DatabaseInterface.GET_INFO)
                     .orElseThrow(()->LOG.throwing(e));
                 if (existing.deleted)
-                    result = db.updateDocumentLink(folderId, linkPart.name, id, version, DatabaseInterface.GET_LINK)
+                    result = db.updateDocumentLink(folderId, linkPart.pattern, id, version, DatabaseInterface.GET_LINK)
                         .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
                 else 
                     throw LOG.throwing(new Exceptions.InvalidObjectName(path));
@@ -261,7 +262,7 @@ public class SQLRepositoryService implements RepositoryService {
             if (folder.getState() != Workspace.State.Open)
                 throw LOG.throwing(new Exceptions.InvalidWorkspaceState(folder.getName(), folder.getState()));
             Id folderId = Id.of(folder.getId());
-            String name = db.generateUniqueName(folderId, baseName);
+            Pattern name = Pattern.of(db.generateUniqueName(folderId, baseName));
             StreamInfo info = StreamInfo.of(iss);
             Document document = new DocumentImpl(new Reference(id.toString(), version.toString()), Instant.now(), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
             filestore.put(version, document, info);
@@ -306,7 +307,7 @@ public class SQLRepositoryService implements RepositoryService {
                 StreamInfo info = StreamInfo.of(InputStreamSupplier.markPersistent(()->document.getData(this)));
                 db.updateDigest(reference, info.digest);
             }
-            String name = db.generateUniqueName(folderId, getBaseDocumentName(document.getMetadata()));
+            Pattern name = Pattern.of(db.generateUniqueName(folderId, getBaseDocumentName(document.getMetadata())));
             DocumentLink result = db.createDocumentLink(folderId, name, docId, versionId, DatabaseInterface.GET_LINK);
             db.commit();               
             return result;
@@ -343,13 +344,13 @@ public class SQLRepositoryService implements RepositoryService {
             NamedElement namePart = (NamedElement)path.part;
             DocumentLink result;
             try {
-                result = db.createDocumentLink(folderId, namePart.name, docId, versionId, DatabaseInterface.GET_LINK);
+                result = db.createDocumentLink(folderId, namePart.pattern, docId, versionId, DatabaseInterface.GET_LINK);
             } catch (SQLIntegrityConstraintViolationException e) {
                 LOG.catching(Level.TRACE, e);
                 Info existing = db.getInfo(path, DatabaseInterface.GET_INFO)
                     .orElseThrow(()->LOG.throwing(e));
                 if (existing.deleted)
-                    result = db.updateDocumentLink(folderId, namePart.name, docId, versionId, DatabaseInterface.GET_LINK)
+                    result = db.updateDocumentLink(folderId, namePart.pattern, docId, versionId, DatabaseInterface.GET_LINK)
                         .orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path)));
                 else 
                     throw LOG.throwing(new Exceptions.InvalidObjectName(path));
@@ -411,7 +412,7 @@ public class SQLRepositoryService implements RepositoryService {
                 
                 Id replacingId = Id.ofDocument(replacing.id);
                 db.createVersion(replacingId, version, mediaType, length, digest, metadata);
-                DocumentLink result = db.updateDocumentLink(folderId, part.name, replacingId, version, DatabaseInterface.GET_LINK).get();
+                DocumentLink result = db.updateDocumentLink(folderId, part.pattern, replacingId, version, DatabaseInterface.GET_LINK).get();
                 db.commit();           
                 return LOG.exit(result);
             } else {
@@ -421,7 +422,7 @@ public class SQLRepositoryService implements RepositoryService {
                     Document document = new DocumentImpl(new Reference(docId.toString(), version.toString()), Instant.now(), mediaType, info.length, info.digest, metadata, false, LocalData.NONE);
                     filestore.put(version, document, info);
                     db.createDocument(docId, version, mediaType, info.length, info.digest, metadata);
-                    DocumentLink result = db.createDocumentLink(folderId, part.name, docId, version, DatabaseInterface.GET_LINK);
+                    DocumentLink result = db.createDocumentLink(folderId, part.pattern, docId, version, DatabaseInterface.GET_LINK);
                     db.commit();
                     return LOG.exit(result);
                 } else {
@@ -455,9 +456,9 @@ public class SQLRepositoryService implements RepositoryService {
                 StreamInfo info = StreamInfo.of(InputStreamSupplier.markPersistent(()->document.getData(this)));
                 db.updateDigest(reference, info.digest);
             }
-            Optional<DocumentLink> result = db.updateDocumentLink(folderId, part.name, docId, versionId, DatabaseInterface.GET_LINK);
+            Optional<DocumentLink> result = db.updateDocumentLink(folderId, part.pattern, docId, versionId, DatabaseInterface.GET_LINK);
             if (!result.isPresent() && Options.CREATE_MISSING_ITEM.isIn(options)) {
-                result = Optional.of(db.createDocumentLink(folderId, part.name, docId, versionId, DatabaseInterface.GET_LINK));
+                result = Optional.of(db.createDocumentLink(folderId, part.pattern, docId, versionId, DatabaseInterface.GET_LINK));
             }
             db.commit();               
             return LOG.exit(result.orElseThrow(()->LOG.throwing(new Exceptions.InvalidObjectName(path))));
@@ -532,7 +533,7 @@ public class SQLRepositoryService implements RepositoryService {
             Id parent_id = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_ID).orElseThrow(()->new Exceptions.InvalidWorkspace(path.parent));
             NamedElement part = (NamedElement)path.part;
             try {
-                Workspace result = db.createFolder(parent_id, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE);
+                Workspace result = db.createFolder(parent_id, part.pattern, state, metadata, DatabaseInterface.GET_WORKSPACE);
                 db.commit();
                 return result;
             } catch (SQLIntegrityConstraintViolationException e) {
@@ -559,7 +560,7 @@ public class SQLRepositoryService implements RepositoryService {
         ) {    
             Id folderId = db.getOrCreateFolder(workspacePath, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_ID)
                 .orElseThrow(()->new Exceptions.InvalidWorkspace(workspacePath));
-            String name = db.generateUniqueName(folderId, getBaseWorkspaceName(metadata));
+            Pattern name = Pattern.of(db.generateUniqueName(folderId, getBaseWorkspaceName(metadata)));
             Workspace result = db.createFolder(folderId, name, state, metadata, DatabaseInterface.GET_WORKSPACE);
             db.commit();               
             return LOG.exit(result);
@@ -599,7 +600,7 @@ public class SQLRepositoryService implements RepositoryService {
                     Id parentId = db.getOrCreateFolder(path.parent, Options.CREATE_MISSING_PARENT.isIn(options), DatabaseInterface.GET_ID)
                             .orElseThrow(doThrowInvalidWorkspace(path));
                     NamedElement part = (NamedElement)path.part;
-                    Workspace result = db.createFolder(parentId, part.name, state, metadata, DatabaseInterface.GET_WORKSPACE);
+                    Workspace result = db.createFolder(parentId, part.pattern, state, metadata, DatabaseInterface.GET_WORKSPACE);
                     db.commit();
                     return LOG.exit(result);
                 } else {

@@ -5,6 +5,7 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.abstractpattern.Pattern;
 import com.softwareplumbers.common.abstractquery.visitor.Visitors.ParameterizedSQL;
 import com.softwareplumbers.common.sql.Schema;
 import com.softwareplumbers.dms.Document;
@@ -322,7 +323,7 @@ public class TestDatabaseInterface {
     @Test
     public void testCreateAndGetFolder() throws SQLException, InvalidWorkspace, IOException {
         try (DatabaseInterface api = factory.getInterface()) {
-            Id id = api.createFolder(Id.ROOT_ID, "foldername", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id id = api.createFolder(Id.ROOT_ID, Pattern.of("foldername"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             api.commit();
             Optional<Workspace> result = api.getFolder(RepositoryPath.valueOf("foldername"), DatabaseInterface.GET_WORKSPACE);
             assertTrue(result.isPresent());
@@ -341,7 +342,7 @@ public class TestDatabaseInterface {
     @Test
     public void testUpdateFolder() throws SQLException, IOException, InvalidWorkspace {
         try (DatabaseInterface api = factory.getInterface()) {
-            Id id = api.createFolder(Id.ROOT_ID, "foldername", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id id = api.createFolder(Id.ROOT_ID, Pattern.of("foldername"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             api.commit();
             Workspace result = api.updateFolder(id, Workspace.State.Closed, Json.createObjectBuilder().add("test", "hello").build(), DatabaseInterface.GET_WORKSPACE).get();
             assertEquals(id.toString(), result.getId());
@@ -353,9 +354,9 @@ public class TestDatabaseInterface {
     @Test
     public void testCreateAndGetFolderWithPath() throws InvalidWorkspace, SQLException, IOException {
         try (DatabaseInterface api = factory.getInterface()) {
-            Id parent_id = api.createFolder(Id.ROOT_ID, "parent", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
-            Id child_id = api.createFolder(parent_id, "child", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
-            Id grandchild_id = api.createFolder(child_id, "grandchild", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id parent_id = api.createFolder(Id.ROOT_ID, Pattern.of("parent"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id child_id = api.createFolder(parent_id, Pattern.of("child"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id grandchild_id = api.createFolder(child_id, Pattern.of("grandchild"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             api.commit();
             Optional<Workspace> result = api.getFolder(RepositoryPath.ROOT.add("parent","child","grandchild"), DatabaseInterface.GET_WORKSPACE);
             assertTrue(result.isPresent());
@@ -367,9 +368,9 @@ public class TestDatabaseInterface {
     @Test
     public void testCopyFolderWithPath() throws SQLException, IOException, InvalidObjectName, InvalidWorkspace {
         try (DatabaseInterface api = factory.getInterface()) {
-            Id parent_id = api.createFolder(Id.ROOT_ID, "parent", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
-            Id child_id = api.createFolder(parent_id, "child", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
-            api.createFolder(child_id, "grandchild", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id parent_id = api.createFolder(Id.ROOT_ID, Pattern.of("parent"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id child_id = api.createFolder(parent_id, Pattern.of("child"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            api.createFolder(child_id, Pattern.of("grandchild"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             RepositoryPath parentPath = RepositoryPath.ROOT.addId(parent_id.toString());
             Workspace sibling = api.copyFolder(parentPath.add("child"), parentPath.add("sibling"), false, DatabaseInterface.GET_WORKSPACE);
             assertEquals(RepositoryPath.valueOf("parent/sibling"), sibling.getName());
@@ -381,12 +382,12 @@ public class TestDatabaseInterface {
     @Test
     public void testCopyDocumentLinkWithPath() throws SQLException, IOException, InvalidObjectName, InvalidWorkspace {
         try (DatabaseInterface api = factory.getInterface()) {
-            Id parent_id = api.createFolder(Id.ROOT_ID, "parent", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
-            Id child_id = api.createFolder(parent_id, "child", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id parent_id = api.createFolder(Id.ROOT_ID, Pattern.of("parent"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id child_id = api.createFolder(parent_id, Pattern.of("child"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             Id id = new Id();
             Id version = new Id();
             api.createDocument(id, version, "type", 0, "test".getBytes(), JsonValue.EMPTY_JSON_OBJECT);
-            api.createDocumentLink(child_id, "grandchild", id, version, DatabaseInterface.GET_ID);
+            api.createDocumentLink(child_id, Pattern.of("grandchild"), id, version, DatabaseInterface.GET_ID);
             RepositoryPath childPath = RepositoryPath.ROOT.addId(child_id.toString());
             RepositoryPath parentPath = RepositoryPath.ROOT.addId(parent_id.toString());
             DocumentLink sibling = api.copyDocumentLink(childPath.add("grandchild"), parentPath.add("sibling"), false, DatabaseInterface.GET_LINK);
@@ -399,12 +400,12 @@ public class TestDatabaseInterface {
     @Test
     public void testCreateAndGetDocumentLink() throws SQLException, IOException, InvalidWorkspace {
         try (DatabaseInterface api = factory.getInterface()) {
-            Id folder_id = api.createFolder(Id.ROOT_ID, "foldername", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id folder_id = api.createFolder(Id.ROOT_ID, Pattern.of("foldername"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             Id id = new Id();
             Id version = new Id();
             byte[] digest = generateDigest();
             api.createDocument(id, version, "type", 0, digest, JsonValue.EMPTY_JSON_OBJECT);
-            api.createDocumentLink(folder_id, "docname", id, version, DatabaseInterface.GET_ID);
+            api.createDocumentLink(folder_id, Pattern.of("docname"), id, version, DatabaseInterface.GET_ID);
             api.commit();
             Optional<DocumentLink> result = api.getDocumentLink(RepositoryPath.ROOT.addId(folder_id.toString()).add("docname"), DatabaseInterface.GET_LINK);
             assertTrue(result.isPresent());
@@ -421,12 +422,12 @@ public class TestDatabaseInterface {
     @Test
     public void testCreateAndGetDocumentLinkWithPath() throws SQLException, IOException, InvalidWorkspace {
         try (DatabaseInterface api = factory.getInterface()) {
-            Id folder_id = api.createFolder(Id.ROOT_ID, "foldername", Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
+            Id folder_id = api.createFolder(Id.ROOT_ID, Pattern.of("foldername"), Workspace.State.Open, JsonValue.EMPTY_JSON_OBJECT, DatabaseInterface.GET_ID);
             Id id = new Id();
             Id version = new Id();
             byte[] digest = generateDigest();
             api.createDocument(id, version, "type", 0, digest, JsonValue.EMPTY_JSON_OBJECT);
-            api.createDocumentLink(folder_id, "docname", id, version, DatabaseInterface.GET_ID);
+            api.createDocumentLink(folder_id, Pattern.of("docname"), id, version, DatabaseInterface.GET_ID);
             api.commit();
             Optional<DocumentLink> result = api.getDocumentLink(RepositoryPath.ROOT.add("foldername","docname"), DatabaseInterface.GET_LINK);
             assertTrue(result.isPresent());

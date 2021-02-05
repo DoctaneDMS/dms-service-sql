@@ -5,6 +5,9 @@
  */
 package com.softwareplumbers.dms.service.sql;
 
+import com.softwareplumbers.common.abstractpattern.Pattern;
+import com.softwareplumbers.common.abstractpattern.visitor.Builders;
+import com.softwareplumbers.common.abstractpattern.visitor.Visitor.PatternSyntaxException;
 import com.softwareplumbers.common.abstractquery.Param;
 import com.softwareplumbers.common.abstractquery.Query;
 import com.softwareplumbers.common.abstractquery.Range;
@@ -30,6 +33,7 @@ import com.softwareplumbers.dms.service.sql.DocumentDatabase.Template;
 import com.softwareplumbers.dms.service.sql.DocumentDatabase.EntityType;
 import com.softwareplumbers.common.abstractquery.visitor.Visitors.ParameterizedSQL;
 import com.softwareplumbers.dms.NamedRepositoryObject;
+import com.softwareplumbers.dms.RepositoryPath.NamedElement;
 import com.softwareplumbers.dms.RepositoryPath.Version;
 import java.io.Reader;
 import java.io.Writer;
@@ -39,7 +43,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import javax.json.Json;
@@ -61,10 +67,41 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
     private static final String SAFE_CHARACTERS ="0123456789ABCDEFGHIJKLMNOPQURSTUVWYXabcdefghijklmnopqrstuvwxyz";
     private static final int MAX_SAFE_CHAR='z';
     private static final byte[] ROOT_ID = new byte[] { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+    private static final String[] ESCAPE_IN_NAMES = new String[] {"@", "/", "~"};
+    private static final int[] CP_ESCAPE_IN_NAMES = Stream.of(ESCAPE_IN_NAMES).mapToInt(s->s.codePointAt(0)).toArray();
     private static final Range NULL_VERSION = Range.equals(Json.createValue(""));
     private static final RepositoryPath ROOT_PATH = RepositoryPath.ROOT.addId(Id.ROOT_ID.toString());
     private static final Workspace ROOT_WORKSPACE = new WorkspaceImpl(Id.ROOT_ID.toString(), null, RepositoryPath.ROOT, false, Workspace.State.Open, Constants.EMPTY_METADATA, true, LocalData.NONE);
+    
+    private static boolean shouldDoubleEscape(int codepoint) {
+        return Stream.of(ESCAPE_IN_NAMES).anyMatch(toEscape->toEscape.codePointAt(0) == codepoint);
+    }
+    
+    public static String doubleEscape(String name) {
+        StringBuilder builder = new StringBuilder();
+        name.codePoints().flatMap(i -> shouldDoubleEscape(i) ? IntStream.of('\\', '\\', i) : IntStream.of(i)).forEachOrdered(builder::appendCodePoint);
+        return builder.toString();
+    }
+    
+    public static String unescapeName(String name) {
 
+        StringBuilder builder = new StringBuilder();
+        
+        IntConsumer consumer = new IntConsumer() {
+            boolean escaped = false;
+            @Override public void accept(int i) {
+                if (escaped) {
+                    builder.appendCodePoint(i); escaped = false;
+                } else {
+                    if (i == '\\') escaped = true; else builder.appendCodePoint(i);
+                }
+            }
+        };
+                
+        name.codePoints().forEachOrdered(consumer);
+        return builder.toString();
+    }
+    
     public static JsonObject toJson(Reader reader) {
         try (JsonReader jsonReader = Json.createReader(reader)) {
             return jsonReader.readObject();
@@ -161,13 +198,13 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
     Query getVersionQuery(Version version) {
         if (version.getPattern().isPresent()) {
             if (version.getPattern().get().isSimple()) {
-                return Query.from("version", Range.equals(Json.createValue(version.getName().get())));
+                return Query.from("version", Range.equals(Json.createValue(version.toString('\\', ESCAPE_IN_NAMES))));
             } else {
-                return Query.from("version", Range.like(version.getName().get()));
+                return Query.from("version", Range.like(version.toString('\\', ESCAPE_IN_NAMES)));
             }
         }
         if (version.getId().isPresent()) {
-            return Query.from("reference", Query.from("version", Range.equals(Json.createValue(version.getName().get()))));
+            return Query.from("reference", Query.from("version", Range.equals(Json.createValue(version.getId().get())))); // was getName?
         }
         return Query.from("version", NULL_VERSION);
     }
@@ -209,7 +246,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         switch (name.part.type) {
             case NAME:
                 RepositoryPath.NamedElement pathElement = (RepositoryPath.NamedElement)name.part;
-                result = result.intersect(Query.from("name", Range.like(pathElement.name)));
+                String escapedName;
+                try { escapedName = doubleEscape(pathElement.pattern.build(Builders.toUnixWildcard())); }
+                catch (PatternSyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+                result = result.intersect(Query.from("name", Range.like(escapedName)));
                 break;
             case ID:
                 RepositoryPath.IdElement idElement = (RepositoryPath.IdElement)name.part;
@@ -550,13 +592,13 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         return Optional.of(RepositoryPath.ROOT);
     }
 
-    public <T> T createFolder(Id parentId, String name, Workspace.State state, JsonObject metadata, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
+    public <T> T createFolder(Id parentId, Pattern name, Workspace.State state, JsonObject metadata, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
         LOG.entry(parentId, name, state, metadata);
         Id id = new Id();
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, parentId)
-            .set(3, name)
+            .set(Types.PATTERN, 3, name)
             .set(4, RepositoryObject.Type.WORKSPACE.toString())
             .execute(con);
         operations.getStatement(Operation.createFolder)
@@ -655,7 +697,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         );
     }
 
-    public <T> Optional<T> getOrCreateFolder(Id parentId, String name, boolean optCreate, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
+    public <T> Optional<T> getOrCreateFolder(Id parentId, Pattern name, boolean optCreate, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
         Optional<T> folder = getFolder(RepositoryPath.ROOT.addId(parentId.toString()).add(name), mapper);
         if (!folder.isPresent() && optCreate)
             folder = Optional.of(createFolder(parentId, name, Workspace.State.Open, JsonObject.EMPTY_JSON_OBJECT, mapper));
@@ -675,11 +717,11 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             case NAME:
                 RepositoryPath.NamedElement docPath = (RepositoryPath.NamedElement)path.part;
                 if (path.parent.isEmpty()) {
-                    return LOG.exit(getOrCreateFolder(Id.ROOT_ID, docPath.name, optCreate, mapper));
+                    return LOG.exit(getOrCreateFolder(Id.ROOT_ID, docPath.pattern, optCreate, mapper));
                 } else {
                     Optional<Id> parentId = getOrCreateFolder(path.parent, optCreate, GET_ID);
                     if (parentId.isPresent()) {
-                        return LOG.exit(getOrCreateFolder(parentId.get(), docPath.name, optCreate, mapper));
+                        return LOG.exit(getOrCreateFolder(parentId.get(), docPath.pattern, optCreate, mapper));
                     } else {
                         throw LOG.throwing(new Exceptions.InvalidWorkspace(path.parent));
                     }
@@ -705,7 +747,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, folderId)
-            .set(3, docPart.name)
+            .set(Types.PATTERN, 3, docPart.pattern)
             .set(4, RepositoryObject.Type.WORKSPACE.toString())
             .execute(con);
         operations.getStatement(Operation.copyFolder)
@@ -757,12 +799,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
 
         operations.getStatement(Operation.purgeChild)
             .set(Types.ID, 1, folderId)
-            .set(2, linkName.name)
+            .set(Types.PATTERN, 2, linkName.pattern)
             .execute(con);
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, folderId)
-            .set(3, linkName.name)
+            .set(Types.PATTERN, 3, linkName.pattern)
             .set(4, RepositoryObject.Type.DOCUMENT_LINK.toString())
             .execute(con);
         operations.getStatement(Operation.copyLink)
@@ -864,13 +906,13 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         return LOG.exit(newId);
     }
 
-    public <T> T createDocumentLink(Id folderId, String name, Id docId, Id version, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
+    public <T> T createDocumentLink(Id folderId, Pattern name, Id docId, Id version, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
         LOG.entry(folderId, name, docId, version);
         Id id = new Id();
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, folderId)
-            .set(3, name)
+            .set(Types.PATTERN, 3, name)
             .set(4, RepositoryObject.Type.DOCUMENT_LINK.toString())
             .execute(con);
         operations.getStatement(Operation.createLink)
@@ -893,7 +935,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         }
     }
 
-    public <T> Optional<T> updateDocumentLink(Id folderId, String name, Id docId, Id version, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, SQLException {
+    public <T> Optional<T> updateDocumentLink(Id folderId, Pattern name, Id docId, Id version, Mapper<T> mapper) throws Exceptions.InvalidWorkspace, Exceptions.InvalidObjectName, SQLException {
         LOG.entry(folderId, name, docId, version);
         RepositoryPath shortResultPath = RepositoryPath.ROOT.addId(folderId.toString()).add(name);
         Optional<Info> info = getInfo(shortResultPath, GET_INFO);
