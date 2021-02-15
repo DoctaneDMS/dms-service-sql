@@ -80,6 +80,26 @@ public class Types {
         }
     };    
     
+    public static final CustomType<Pattern> NAME = new CustomType<Pattern>() {
+               
+        @Override
+        public void set(PreparedStatement statement, int index, Pattern value) throws SQLException {
+            if (value == null) 
+                statement.setNull(index,  java.sql.Types.VARCHAR);
+            else 
+                statement.setString(index, format(value));
+        }
+        
+        @Override
+        public String format(Pattern value) {
+            try {
+                return value.build(Builders.toSimplePattern('\\', CP_ESCAPE_IN_NAMES));
+            } catch (PatternSyntaxException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    };    
+    
     public static final CompositeType<RepositoryPath> PATH = Types::setRepositoryPath;
     
     public static final FluentStatement setRepositoryPath(FluentStatement fluentStatement, String name, RepositoryPath path) {
@@ -90,7 +110,7 @@ public class Types {
                 RepositoryPath.NamedElement docPart = (RepositoryPath.NamedElement)path.part;
                 String escapedName;
                 try {
-                    escapedName = docPart.pattern.build(Builders.toUnixWildcard('\\', CP_ESCAPE_IN_NAMES));
+                    escapedName = docPart.pattern.build(Builders.toSimplePattern('\\', CP_ESCAPE_IN_NAMES));
                 } catch (PatternSyntaxException e) {
                     throw new RuntimeException(e);
                 }
@@ -106,5 +126,7 @@ public class Types {
                 return fluentStatement.set(PATH, "parent." + name, path.parent);
         }
     }
+    
+ 
 }
 

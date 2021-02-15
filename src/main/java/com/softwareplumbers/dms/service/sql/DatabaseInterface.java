@@ -6,6 +6,8 @@
 package com.softwareplumbers.dms.service.sql;
 
 import com.softwareplumbers.common.abstractpattern.Pattern;
+import com.softwareplumbers.common.abstractpattern.parsers.Token;
+import com.softwareplumbers.common.abstractpattern.parsers.Tokenizer;
 import com.softwareplumbers.common.abstractpattern.visitor.Builders;
 import com.softwareplumbers.common.abstractpattern.visitor.Visitor.PatternSyntaxException;
 import com.softwareplumbers.common.abstractquery.Param;
@@ -102,6 +104,10 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         return builder.toString();
     }
     
+    public static String escapedUpdatePathElement(Pattern pattern) throws PatternSyntaxException {
+        return pattern.build(Builders.toSimplePattern('\\', CP_ESCAPE_IN_NAMES));
+    }
+    
     public static JsonObject toJson(Reader reader) {
         try (JsonReader jsonReader = Json.createReader(reader)) {
             return jsonReader.readObject();
@@ -137,10 +143,15 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         return new Reference(id.toString(),version.toString());
     };
 
+    public static RepositoryPath toRepositoryPath(String path) {
+        Tokenizer tokenizer = new Tokenizer(path, '\\', ESCAPE_IN_NAMES);
+        return RepositoryPathParser.parsePath(tokenizer);
+    }
+    
     public Optional<RepositoryPath> getBasePath(Id id) throws SQLException {
         try (Stream<RepositoryPath> names = operations.getStatement(Operation.fetchPathToId)
             .set(Types.ID, 1, id)
-            .execute(con, rs->RepositoryPath.valueOf(rs.getString(1)))
+            .execute(con, rs->toRepositoryPath(rs.getString(1)))
         ) {
 
             return names.findFirst();
@@ -161,7 +172,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
 
         Optional<RepositoryPath.IdElement> rootId = basePath.getRootId();
 
-        RepositoryPath name = basePath.addAll(RepositoryPath.valueOf(results.getString("PATH")));
+        RepositoryPath name = basePath.addAll(toRepositoryPath(results.getString("PATH")));
         return new DocumentLinkImpl(id.toString(), version, name, deleted, new Reference(docId.toString(),docVersion.toString()), updateTime, mediaType, length, hash, metadata, false, LocalData.NONE);
     }
 
@@ -181,7 +192,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         String version = results.getString("VERSION");
         JsonObject metadata = toJson(results.getCharacterStream("METADATA"));
         Workspace.State state = Workspace.State.valueOf(results.getString("STATE"));
-        RepositoryPath path = RepositoryPath.valueOf(results.getString("PATH"));
+        RepositoryPath path = toRepositoryPath(results.getString("PATH"));
         boolean deleted = results.getBoolean("DELETED");
         return new WorkspaceImpl(id.toString(), version, path, deleted, state, metadata, false, LocalData.NONE);
     };
@@ -598,7 +609,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, parentId)
-            .set(Types.PATTERN, 3, name)
+            .set(Types.NAME, 3, name)
             .set(4, RepositoryObject.Type.WORKSPACE.toString())
             .execute(con);
         operations.getStatement(Operation.createFolder)
@@ -684,8 +695,15 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
     }
 
     public <T> Optional<T> getInfo(RepositoryPath name, Mapper<T> mapper) throws SQLException {
-        try (Stream<T> infos = getInfos(name, mapper)) {
-            return infos.findFirst();
+        LOG.entry(name);
+        Optional<RepositoryPath> basePath = getBasePath(name, mapper);
+        if (!basePath.isPresent()) return LOG.exit(Optional.empty());
+        ParameterizedSQL sql = getInfoSQL(name);
+        try (Stream<T> results = FluentStatement.of(sql.sql, sql.parameters)
+                .set(Types.PATH, "path", name)
+                .execute(con, mapper)) 
+        {
+            return LOG.exit(results.findFirst());
         }
     }
 
@@ -698,9 +716,11 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
     }
 
     public <T> Optional<T> getOrCreateFolder(Id parentId, Pattern name, boolean optCreate, Mapper<T> mapper) throws SQLException, Exceptions.InvalidWorkspace {
-        Optional<T> folder = getFolder(RepositoryPath.ROOT.addId(parentId.toString()).add(name), mapper);
-        if (!folder.isPresent() && optCreate)
+        RepositoryPath path = RepositoryPath.ROOT.addId(parentId.toString()).add(name);
+        Optional<T> folder = getFolder(path, mapper);
+        if (!folder.isPresent() && optCreate) {
             folder = Optional.of(createFolder(parentId, name, Workspace.State.Open, JsonObject.EMPTY_JSON_OBJECT, mapper));
+        }
         return folder;
     }
 
@@ -747,7 +767,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, folderId)
-            .set(Types.PATTERN, 3, docPart.pattern)
+            .set(Types.NAME, 3, docPart.pattern)
             .set(4, RepositoryObject.Type.WORKSPACE.toString())
             .execute(con);
         operations.getStatement(Operation.copyFolder)
@@ -799,12 +819,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
 
         operations.getStatement(Operation.purgeChild)
             .set(Types.ID, 1, folderId)
-            .set(Types.PATTERN, 2, linkName.pattern)
+            .set(Types.NAME, 2, linkName.pattern)
             .execute(con);
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, folderId)
-            .set(Types.PATTERN, 3, linkName.pattern)
+            .set(Types.NAME, 3, linkName.pattern)
             .set(4, RepositoryObject.Type.DOCUMENT_LINK.toString())
             .execute(con);
         operations.getStatement(Operation.copyLink)
@@ -912,7 +932,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         operations.getStatement(Operation.createNode)
             .set(Types.ID, 1, id)
             .set(Types.ID, 2, folderId)
-            .set(Types.PATTERN, 3, name)
+            .set(Types.NAME, 3, name)
             .set(4, RepositoryObject.Type.DOCUMENT_LINK.toString())
             .execute(con);
         operations.getStatement(Operation.createLink)
