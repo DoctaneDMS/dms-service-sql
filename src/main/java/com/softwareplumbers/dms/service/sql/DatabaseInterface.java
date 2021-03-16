@@ -42,7 +42,9 @@ import java.io.Writer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -683,16 +685,22 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         }
     }
 
-    public <T> Stream<T> getInfos(RepositoryPath name, Mapper<T> mapper) throws SQLException {
+    @FunctionalInterface
+    private interface ConsumerThrowing<T, E extends Exception>  {
+        void consume(T item) throws E;
+    }
+    
+    private <T,E extends Exception> void getInfos(RepositoryPath name, Mapper<T> mapper, ConsumerThrowing<T, E> consumer) throws SQLException, E {
         LOG.entry(name);
         Optional<RepositoryPath> basePath = getBasePath(name, mapper);
-        if (!basePath.isPresent()) return LOG.exit(Stream.empty());
+        if (!basePath.isPresent()) { LOG.exit(); return; }
         ParameterizedSQL sql = getInfoSQL(name);
-        return LOG.exit(
-            FluentStatement.of(sql.sql, sql.parameters)
-                .set(Types.PATH, "path", name)
-                .execute(database.getDataSource(), mapper)
-        );
+        Iterator<T> items = FluentStatement.of(sql.sql, sql.parameters)
+            .set(Types.PATH, "path", name)
+            .execute(con, mapper)
+            .iterator();
+        while (items.hasNext()) consumer.consume(items.next());
+        LOG.exit();
     }
 
     public <T> Optional<T> getInfo(RepositoryPath name, Mapper<T> mapper) throws SQLException {
@@ -1074,47 +1082,42 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         LOG.entry(path);
         Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
         if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
-        List<Info> infos = Collections.EMPTY_LIST;
-        try (Stream<Info> results = getInfos(path, GET_INFO)) { infos = results.collect(Collectors.toList()); }
-        for (Info info : infos) operations.getStatement(Operation.deleteObject).set(Types.ID, 1, info.id).execute(con); 
-        return LOG.exit(infos.stream().map(info -> {
-            try {
-                switch(info.type) {
-                    case DOCUMENT_LINK:
-                        return getDocumentLink(path, GET_LINK).orElseThrow(()->new RuntimeException("failed to fetch deleted link"));
-                    case WORKSPACE:
-                        return getFolder(path, GET_WORKSPACE).orElseThrow(()->new RuntimeException("failed to fetch deleted workspace"));
-                    default:
-                        throw new RuntimeException("unknown type " + info.type);
-                }
-            } catch (SQLException sqe) {
-                throw new RuntimeException(sqe);
-            }
-        }));
+        List<NamedRepositoryObject> result = new ArrayList<>();
+        getInfos(path, GET_INFO, info -> { 
+            operations.getStatement(Operation.deleteObject).set(Types.ID, 1, info.id).execute(con);
+            switch(info.type) {
+                case DOCUMENT_LINK:
+                    result.add(getDocumentLink(path, GET_LINK).orElseThrow(()->new RuntimeException("failed to fetch deleted link")));
+                    break;
+                case WORKSPACE:
+                    result.add(getFolder(path, GET_WORKSPACE).orElseThrow(()->new RuntimeException("failed to fetch deleted workspace")));
+                    break;
+                default:
+                    throw new RuntimeException("unknown type " + info.type);
+              }
+        });
+        return LOG.exit(result.stream());
     }
 
     public Stream<NamedRepositoryObject> undeleteObject(RepositoryPath path) throws SQLException, Exceptions.InvalidObjectName, Exceptions.InvalidWorkspace, Exceptions.InvalidWorkspaceState {
         LOG.entry(path);
         Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
         if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
-        List<Info> infos = Collections.EMPTY_LIST;
-        try (Stream<Info> results = getInfos(path, GET_INFO)) { infos = results.collect(Collectors.toList()); }
-        for (Info info : infos) operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, info.id).execute(con); 
-        return LOG.exit(infos.stream().map(info -> {
-            try {
-                operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, info.id).execute(con);        
-                switch(info.type) {
-                    case DOCUMENT_LINK:
-                        return getDocumentLink(path, GET_LINK).orElseThrow(()->new RuntimeException("failed to fetch undeleted link"));
-                    case WORKSPACE:
-                        return getFolder(path, GET_WORKSPACE).orElseThrow(()->new RuntimeException("failed to fetch undeleted workspace"));
-                    default:
-                        throw new RuntimeException("unknown type " + info.type);
-                }
-            } catch (SQLException sqe) {
-                throw new RuntimeException(sqe);
+        List<NamedRepositoryObject> result = new ArrayList<>();
+        getInfos(path, GET_INFO, info -> { 
+            operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, info.id).execute(con); 
+            switch(info.type) {
+                case DOCUMENT_LINK:
+                    result.add(getDocumentLink(path, GET_LINK).orElseThrow(()->new RuntimeException("failed to fetch undeleted link")));
+                    break;
+                case WORKSPACE:
+                    result.add(getFolder(path, GET_WORKSPACE).orElseThrow(()->new RuntimeException("failed to fetch undeleted workspace")));
+                    break;
+                default:
+                    throw new RuntimeException("unknown type " + info.type);
             }
-        }));
+        });
+        return LOG.exit(result.stream());
     }
 
     void updateDigest(Reference reference, byte[] digest) throws SQLException {
