@@ -42,6 +42,7 @@ import java.io.Writer;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -690,7 +691,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         return LOG.exit(
             FluentStatement.of(sql.sql, sql.parameters)
                 .set(Types.PATH, "path", name)
-                .execute(con, mapper)
+                .execute(database.getDataSource(), mapper)
         );
     }
 
@@ -1073,7 +1074,8 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         LOG.entry(path);
         Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
         if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
-        List<Info> infos = getInfos(path, GET_INFO).collect(Collectors.toList());
+        List<Info> infos = Collections.EMPTY_LIST;
+        try (Stream<Info> results = getInfos(path, GET_INFO)) { infos = results.collect(Collectors.toList()); }
         for (Info info : infos) operations.getStatement(Operation.deleteObject).set(Types.ID, 1, info.id).execute(con); 
         return LOG.exit(infos.stream().map(info -> {
             try {
@@ -1095,7 +1097,8 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         LOG.entry(path);
         Workspace parent = getFolder(path.parent, GET_WORKSPACE).orElseThrow(()->LOG.throwing(new Exceptions.InvalidWorkspace(path.parent)));
         if (parent.getState() != Workspace.State.Open) throw LOG.throwing(new Exceptions.InvalidWorkspaceState(path.parent, parent.getState()));
-        List<Info> infos = getInfos(path, GET_INFO).collect(Collectors.toList());
+        List<Info> infos = Collections.EMPTY_LIST;
+        try (Stream<Info> results = getInfos(path, GET_INFO)) { infos = results.collect(Collectors.toList()); }
         for (Info info : infos) operations.getStatement(Operation.undeleteObject).set(Types.ID, 1, info.id).execute(con); 
         return LOG.exit(infos.stream().map(info -> {
             try {
