@@ -43,7 +43,7 @@ public class SQLRepositoryServiceMBean {
     void checkIntegrity(String path, boolean fix, IntegrityCheckStatus status) {
         LOG.entry(path, fix, status);
         try (DatabaseInterface ifc = database.getInterface()) {            
-            try (Stream<DocumentLink> docs = ifc.getDocumentLinks(RepositoryPath.valueOf(path).add("*").setVersion("*"), Query.UNBOUNDED, true, DatabaseInterface.GET_LINK)) {
+            try (Stream<DocumentLink> docs = ifc.getDocumentLinks(RepositoryPath.valueOf(path).add("*").setVersion("*"), Query.UNBOUNDED, true, true, DatabaseInterface.GET_LINK)) {
                 docs.forEach(link->{
                     try {
                         LOG.trace("Got link {}", link.getReference());

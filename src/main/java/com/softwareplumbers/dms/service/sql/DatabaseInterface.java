@@ -439,11 +439,11 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         return templates.getSQL(Template.fetchDocument, query.toExpression(schema.getFormatter(EntityType.VERSION)).sql);
     }
 
-    String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean includeDeleted) {
+    String searchDocumentLinkSQL(RepositoryPath basePath, RepositoryPath nameWithPatterns, Query filter, boolean includeDeleted, boolean includeAllVersions) {
         filter = getDBFilterExpression(schema.getFields(EntityType.LINK), filter);
         // unless there is a wildcard in the version string for the final part of the address,
         // the intention of the user is probably to retrieve the current version of the document
-        if (nameWithPatterns.isEmpty() || !nameWithPatterns.part.getVersion().getPattern().isPresent())
+        if (!includeAllVersions)
             filter = filter.intersect(Query.from("current", Range.equals(JsonValue.TRUE)));
         if (!nameWithPatterns.isEmpty()) {
             filter = filter
@@ -1052,12 +1052,12 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
         }
     }
 
-    public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, boolean includeDeleted, Mapper<T> mapper) throws SQLException {
+    public <T> Stream<T> getDocumentLinks(RepositoryPath path, Query filter, boolean includeDeleted, boolean includeAllVersions, Mapper<T> mapper) throws SQLException {
         LOG.entry(path, filter, mapper);
 
         if (path.isEmpty()) {
             Stream<T> result = FluentStatement
-                .of(searchDocumentLinkSQL(RepositoryPath.ROOT, path, filter, includeDeleted))
+                .of(searchDocumentLinkSQL(RepositoryPath.ROOT, path, filter, includeDeleted, includeAllVersions))
                 .execute(database.getDataSource(), mapper);
             if (mapper == GET_LINK) {
                 // Can't do this in simple map because of connection issues with deferred execution.
@@ -1072,7 +1072,7 @@ public class DatabaseInterface extends AbstractInterface<DocumentDatabase.Entity
             Optional<RepositoryPath> basePath = getBasePath(path, mapper);
             if (!basePath.isPresent()) return LOG.exit(Stream.empty());
             Stream<T> result = FluentStatement
-                .of(searchDocumentLinkSQL(basePath.get(), path, filter, includeDeleted))
+                .of(searchDocumentLinkSQL(basePath.get(), path, filter, includeDeleted, includeAllVersions))
                 .execute(database.getDataSource(), mapper);
             return result;
         }

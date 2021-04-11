@@ -747,7 +747,7 @@ public class SQLRepositoryService implements RepositoryService {
             boolean includeDeleted = Options.INCLUDE_DELETED.isIn(options);
             if (!Options.RETURN_ALL_VERSIONS.isIn(options)) {
                 try (
-                    Stream<DocumentLink> rawLinks = db.getDocumentLinks(path, query, includeDeleted, DatabaseInterface.GET_LINK)
+                    Stream<DocumentLink> rawLinks = db.getDocumentLinks(path, query, includeDeleted, Options.SEARCH_OLD_VERSIONS.isIn(options), DatabaseInterface.GET_LINK)
                 ) {
                     links = rawLinks             
                         .map(link->LOG.exit(link))
@@ -758,7 +758,7 @@ public class SQLRepositoryService implements RepositoryService {
                         .map(NamedRepositoryObject.class::cast);                    
                 }
             } else {
-                links = db.getDocumentLinks(path, query, includeDeleted, DatabaseInterface.GET_LINK)
+                links = db.getDocumentLinks(path, query, includeDeleted, true, DatabaseInterface.GET_LINK)
                     .filter(filterBy(query))
                     .map(NamedRepositoryObject.class::cast);
             }
